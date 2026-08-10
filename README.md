@@ -3,10 +3,19 @@
 Build a property tour itinerary, send the client one link, and get every note and
 photo from the walkthrough back in one place.
 
-**Phase 1 (this branch): the Supabase foundation.** Schema, row-level security,
-share links, photo storage, and broker auth wired into a Next.js app. Tour and
-property CRUD screens come next; everything they need is already live in the
-database.
+**Where this is.** Phase 1 built the Supabase foundation — schema, row-level
+security, share links, photo storage, broker auth. Phase 2 built the app on top
+of it:
+
+- **Properties** — a building library with the fields that come off a brochure
+  or a CoStar export: SF, clear height, docks, rate and rent type, OpEx,
+  listing contact.
+- **Tours** — build an itinerary, reorder stops, attach a client, mint and
+  revoke share links.
+- **On the tour** — the client opens the link on their phone, adds notes with a
+  1–5 rating, and uploads photos straight from the camera.
+- **Recap** — every note and photo consolidated by stop, yours alongside
+  theirs.
 
 ## The access model
 
@@ -129,12 +138,13 @@ The security model is the part worth testing, so it has a suite:
 npm run db:test
 ```
 
-53 assertions covering tenant isolation between brokers, what a guest can and
+70 assertions covering tenant isolation between brokers, what a guest can and
 cannot read, the internal-notes boundary, storage path enforcement, join
-idempotency, revocation, and the data-integrity triggers. It runs against the
-local stack by default; `DATABASE_URL=... ./scripts/run-rls-tests.sh --shim`
-runs it against a bare Postgres using the stand-in schemas in
-`supabase/tests/00_supabase_shim.sql`.
+idempotency, revocation, itinerary reordering permissions, one guest editing
+another's notes, view-only links, archived tours, and the data-integrity
+triggers. It runs against the local stack by default;
+`DATABASE_URL=... ./scripts/run-rls-tests.sh --shim` runs it against a bare
+Postgres using the stand-in schemas in `supabase/tests/00_supabase_shim.sql`.
 
 **The suite writes and deletes rows — never point it at a database with real
 tours in it.**
@@ -154,13 +164,18 @@ src/
     admin.ts                   service-role client (bypasses RLS)
     database.types.ts          generated — do not hand-edit
     types.ts                   hand-written aliases and helpers
+  lib/form.ts                  FormData coercion for server actions
+  lib/ui.ts                    shared class strings and formatters
   app/
     login/                     magic-link sign-in
     auth/callback/             code-for-session exchange
-    dashboard/                 broker landing
-    t/[token]/                 guest join + tour view
+    (broker)/                  everything behind sign-in
+      dashboard/
+      properties/              library, create, edit
+      tours/                   list, builder, share links, recap
+    t/[token]/                 guest join + tour view + capture
 supabase/
-  migrations/                  schema, RLS, share links, storage
+  migrations/                  schema, RLS, share links, storage, ordering
   tests/                       RLS assertions
   seed.sql                     local dev data
 ```
