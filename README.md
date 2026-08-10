@@ -78,8 +78,10 @@ every storage policy parses it — so build keys with `tourPhotoPath()` from
 cp .env.example .env.local
 ```
 
-Fill it from **Project Settings → API** in the Supabase dashboard. The
-`service_role` key bypasses RLS — server-side only, never `NEXT_PUBLIC_`.
+Fill it from the Supabase dashboard: the URL is under **Project Settings → Data
+API**, the key is the **Publishable key** under **Project Settings → API Keys**
+(older projects call it the `anon` key). The optional
+secret / `service_role` key bypasses RLS and is not used by the app — leave it unset.
 
 ### 2. Turn on anonymous sign-ins
 
@@ -91,6 +93,13 @@ your deployed origin and add `http://localhost:3000/auth/callback` to the
 redirect allow-list.
 
 ### 3. Push the schema
+
+Without a terminal: open `supabase/setup.sql`, copy the whole file, paste it into
+the dashboard's **SQL Editor** and run it once. That file is the migrations
+concatenated in order and produces the same schema.
+
+With the CLI, which is what you want once the project is live and migrations
+start stacking up:
 
 ```bash
 npx supabase login
