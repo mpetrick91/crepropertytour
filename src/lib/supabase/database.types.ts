@@ -194,6 +194,24 @@ type GuestPropertyRow = Omit<
   | 'updated_at'
 >;
 
+/**
+ * Foreign keys, in the shape the generator emits. supabase-js reads these to
+ * type embedded selects like `.select('tour_stops(count)')`, so an embed that
+ * suddenly resolves to GenericStringError usually means a missing entry here.
+ */
+type Fk<
+  Name extends string,
+  Column extends string,
+  Relation extends string,
+  OneToOne extends boolean = false,
+> = {
+  foreignKeyName: Name;
+  columns: [Column];
+  isOneToOne: OneToOne;
+  referencedRelation: Relation;
+  referencedColumns: ['id'];
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -207,19 +225,22 @@ export type Database = {
         Row: ClientRow;
         Insert: Insertable<ClientRow, 'company' | 'email' | 'phone' | 'notes'>;
         Update: Partial<ClientRow>;
-        Relationships: [];
+        Relationships: [Fk<'clients_broker_id_fkey', 'broker_id', 'profiles'>];
       };
       properties: {
         Row: PropertyRow;
         Insert: Insertable<PropertyRow, Exclude<keyof PropertyRow, 'broker_id' | 'address_line1'>>;
         Update: Partial<PropertyRow>;
-        Relationships: [];
+        Relationships: [Fk<'properties_broker_id_fkey', 'broker_id', 'profiles'>];
       };
       tours: {
         Row: TourRow;
         Insert: Insertable<TourRow, Exclude<keyof TourRow, 'broker_id' | 'title'>>;
         Update: Partial<TourRow>;
-        Relationships: [];
+        Relationships: [
+          Fk<'tours_broker_id_fkey', 'broker_id', 'profiles'>,
+          Fk<'tours_client_id_fkey', 'client_id', 'clients'>,
+        ];
       };
       tour_stops: {
         Row: TourStopRow;
@@ -228,7 +249,10 @@ export type Database = {
           'scheduled_at' | 'duration_minutes' | 'broker_notes' | 'visited_at'
         >;
         Update: Partial<TourStopRow>;
-        Relationships: [];
+        Relationships: [
+          Fk<'tour_stops_tour_id_fkey', 'tour_id', 'tours'>,
+          Fk<'tour_stops_property_id_fkey', 'property_id', 'properties'>,
+        ];
       };
       tour_shares: {
         Row: TourShareRow;
@@ -237,7 +261,10 @@ export type Database = {
           'token' | 'label' | 'allow_notes' | 'allow_photos' | 'expires_at' | 'revoked_at'
         >;
         Update: Partial<TourShareRow>;
-        Relationships: [];
+        Relationships: [
+          Fk<'tour_shares_tour_id_fkey', 'tour_id', 'tours'>,
+          Fk<'tour_shares_created_by_fkey', 'created_by', 'profiles'>,
+        ];
       };
       tour_participants: {
         Row: TourParticipantRow;
@@ -246,13 +273,20 @@ export type Database = {
           'share_id' | 'role' | 'company' | 'removed_at' | 'can_add_notes' | 'can_add_photos'
         >;
         Update: Partial<TourParticipantRow>;
-        Relationships: [];
+        Relationships: [
+          Fk<'tour_participants_tour_id_fkey', 'tour_id', 'tours'>,
+          Fk<'tour_participants_share_id_fkey', 'share_id', 'tour_shares'>,
+        ];
       };
       stop_notes: {
         Row: StopNoteRow;
         Insert: Insertable<StopNoteRow, 'rating'>;
         Update: Partial<StopNoteRow>;
-        Relationships: [];
+        Relationships: [
+          Fk<'stop_notes_tour_id_fkey', 'tour_id', 'tours'>,
+          Fk<'stop_notes_stop_id_fkey', 'stop_id', 'tour_stops'>,
+          Fk<'stop_notes_participant_id_fkey', 'participant_id', 'tour_participants'>,
+        ];
       };
       stop_photos: {
         Row: StopPhotoRow;
@@ -261,7 +295,11 @@ export type Database = {
           'caption' | 'width' | 'height' | 'size_bytes' | 'taken_at'
         >;
         Update: Partial<StopPhotoRow>;
-        Relationships: [];
+        Relationships: [
+          Fk<'stop_photos_tour_id_fkey', 'tour_id', 'tours'>,
+          Fk<'stop_photos_stop_id_fkey', 'stop_id', 'tour_stops'>,
+          Fk<'stop_photos_participant_id_fkey', 'participant_id', 'tour_participants'>,
+        ];
       };
     };
     Views: {
@@ -307,6 +345,14 @@ export type Database = {
           p_expires_at?: string | null;
         };
         Returns: TourShareRow;
+      };
+      reorder_tour_stops: {
+        Args: { p_tour_id: string; p_stop_ids: string[] };
+        Returns: undefined;
+      };
+      next_stop_position: {
+        Args: { p_tour_id: string };
+        Returns: number;
       };
     };
     Enums: {

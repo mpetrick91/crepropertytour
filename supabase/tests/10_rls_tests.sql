@@ -318,4 +318,177 @@ select public.t_blocked(
   'an empty note body is rejected');
 commit;
 
+-- Itinerary reordering ----------------------------------------------------------
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+select public.t_ok(
+  public.next_stop_position('70000000-0000-0000-0000-000000000001') = 3,
+  'next_stop_position returns the slot after the last stop'
+);
+
+select public.reorder_tour_stops(
+  '70000000-0000-0000-0000-000000000001',
+  array['50000000-0000-0000-0000-000000000002',
+        '50000000-0000-0000-0000-000000000001']::uuid[]
+);
+select public.t_ok(
+  (select position from public.tour_stops where id = '50000000-0000-0000-0000-000000000002') = 1
+  and (select position from public.tour_stops where id = '50000000-0000-0000-0000-000000000001') = 2,
+  'broker can swap two stops in one statement'
+);
+
+select public.t_blocked(
+  $q$select public.reorder_tour_stops('70000000-0000-0000-0000-000000000001',
+      array['50000000-0000-0000-0000-000000000001']::uuid[])$q$,
+  'a partial reorder that would drop a stop is rejected');
+commit;
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+select public.t_blocked(
+  $q$select public.reorder_tour_stops('70000000-0000-0000-0000-000000000001',
+      array['50000000-0000-0000-0000-000000000001',
+            '50000000-0000-0000-0000-000000000002']::uuid[])$q$,
+  'another broker CANNOT reorder someone else''s itinerary');
+commit;
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+select public.t_blocked(
+  $q$select public.reorder_tour_stops('70000000-0000-0000-0000-000000000001',
+      array['50000000-0000-0000-0000-000000000001',
+            '50000000-0000-0000-0000-000000000002']::uuid[])$q$,
+  'a guest CANNOT reorder the itinerary');
+commit;
+
+-- Editing and deleting contributions ----------------------------------------------
+
+-- Second guest joins so there are two people's notes to keep apart.
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+select public.create_tour_share('70000000-0000-0000-0000-000000000001', 'Second guest', true, true, null);
+commit;
+
+select token as share_token_2 from public.tour_shares
+where label = 'Second guest' limit 1
+\gset
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","is_anonymous":true}';
+select public.join_tour(:'share_token_2', 'Ops Lead', 'Acme Logistics');
+insert into public.stop_notes (tour_id, stop_id, participant_id, body)
+values ('70000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002',
+        public.current_participant_id('70000000-0000-0000-0000-000000000001'),
+        'Truck court is tight for 53 ft trailers.');
+select public.t_ok(true, 'a second guest joins on their own link and adds a note');
+select public.t_ok(
+  (select count(*) from public.stop_notes) = 2,
+  'guests can read each other''s notes on the shared tour'
+);
+commit;
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+select public.t_blocked(
+  $q$delete from public.stop_notes
+     where participant_id <> public.current_participant_id('70000000-0000-0000-0000-000000000001')$q$,
+  'a guest CANNOT delete another guest''s note');
+select public.t_blocked(
+  $q$update public.stop_notes set body = 'rewritten'
+     where participant_id <> public.current_participant_id('70000000-0000-0000-0000-000000000001')$q$,
+  'a guest CANNOT edit another guest''s note');
+
+update public.stop_notes
+set body = 'Ceiling height works. Office is dated but workable.'
+where participant_id = public.current_participant_id('70000000-0000-0000-0000-000000000001');
+select public.t_ok(
+  (select count(*) from public.stop_notes where body like '%workable%') = 1,
+  'a guest CAN edit their own note'
+);
+
+delete from public.stop_notes
+where participant_id = public.current_participant_id('70000000-0000-0000-0000-000000000001');
+select public.t_ok(
+  (select count(*) from public.stop_notes) = 1,
+  'a guest CAN delete their own note'
+);
+commit;
+
+-- The broker moderates ------------------------------------------------------------
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+delete from public.stop_notes;
+select public.t_ok(
+  (select count(*) from public.stop_notes) = 0,
+  'the broker can remove any note on their own tour'
+);
+commit;
+
+-- A view-only link ------------------------------------------------------------------
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+select public.create_tour_share('70000000-0000-0000-0000-000000000001', 'View only', false, false, null);
+commit;
+
+select token as share_token_3 from public.tour_shares
+where label = 'View only' limit 1
+\gset
+
+insert into auth.users (id, email, is_anonymous)
+values ('55555555-5555-5555-5555-555555555555', null, true);
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"55555555-5555-5555-5555-555555555555","is_anonymous":true}';
+select public.join_tour(:'share_token_3', 'Silent Observer');
+select public.t_ok(
+  (select count(*) from public.guest_tour_stops) = 2,
+  'a view-only guest can still read the itinerary'
+);
+select public.t_blocked(
+  $q$insert into public.stop_notes (tour_id, stop_id, participant_id, body)
+     values ('70000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001',
+             public.current_participant_id('70000000-0000-0000-0000-000000000001'), 'note')$q$,
+  'a view-only guest CANNOT add notes');
+select public.t_blocked(
+  $q$insert into storage.objects (bucket_id, name, owner_id)
+     values ('tour-photos', '70000000-0000-0000-0000-000000000001/x.jpg',
+             '55555555-5555-5555-5555-555555555555')$q$,
+  'a view-only guest CANNOT upload photos');
+commit;
+
+-- Archiving a tour freezes contributions --------------------------------------------
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+update public.tours set status = 'archived' where id = '70000000-0000-0000-0000-000000000001';
+commit;
+
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+select public.t_blocked(
+  $q$insert into public.stop_notes (tour_id, stop_id, participant_id, body)
+     values ('70000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001',
+             public.current_participant_id('70000000-0000-0000-0000-000000000001'), 'late note')$q$,
+  'no new notes once the tour is archived');
+select public.t_ok(
+  (select count(*) from public.guest_tour_stops) = 2,
+  'an archived tour is still readable by its participants'
+);
+commit;
+
 select 'ALL TESTS PASSED' as result;

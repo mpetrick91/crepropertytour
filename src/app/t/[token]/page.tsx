@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
-import type { TourSharePreview } from '@/lib/supabase/types';
+import type { ShareInvalidReason, TourSharePreview } from '@/lib/supabase/types';
 
 import { JoinTourForm } from './join-tour-form';
 import { GuestTourView } from './guest-tour-view';
 
 export const metadata = { title: 'Your tour | CRE Property Tour' };
 
-const INVALID_COPY: Record<string, string> = {
+const INVALID_COPY: Record<ShareInvalidReason, string> = {
   not_found: "We couldn't find this tour link. Check the URL, or ask your broker to resend it.",
   revoked: 'This tour link has been turned off. Ask your broker for a new one.',
   expired: 'This tour link has expired. Ask your broker for a new one.',
@@ -34,16 +34,39 @@ export default async function GuestTourPage({ params }: PageProps<'/t/[token]'>)
     );
   }
 
-  // Already redeemed on this device? The guest views only return rows for
-  // participants, so a hit here means they are on the tour.
-  const { data: joinedTour } = await supabase
-    .from('guest_tours')
-    .select('id, title, tour_date, start_time, market, requirement_summary, status')
-    .eq('id', preview.tour_id)
-    .maybeSingle();
+  // Already redeemed on this device? A participant row is the proof -- the
+  // guest views return nothing without one.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (joinedTour) {
-    return <GuestTourView tour={joinedTour} />;
+  const { data: participant } = user
+    ? await supabase
+        .from('tour_participants')
+        .select('id, can_add_notes, can_add_photos')
+        .eq('tour_id', preview.tour_id)
+        .eq('user_id', user.id)
+        .is('removed_at', null)
+        .maybeSingle()
+    : { data: null };
+
+  if (participant) {
+    const { data: tour } = await supabase
+      .from('guest_tours')
+      .select('id, title, status, tour_date, start_time, market, requirement_summary')
+      .eq('id', preview.tour_id)
+      .maybeSingle();
+
+    if (tour) {
+      return (
+        <GuestTourView
+          tour={tour}
+          participantId={participant.id}
+          canAddNotes={participant.can_add_notes}
+          canAddPhotos={participant.can_add_photos}
+        />
+      );
+    }
   }
 
   return <JoinTourForm token={token} preview={preview} />;
