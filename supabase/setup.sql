@@ -2,7 +2,7 @@
 -- CRE Property Tour — complete database setup
 --
 -- Paste this whole file into the Supabase SQL Editor and press Run.
--- It is the five migration files in supabase/migrations/ concatenated in
+-- It is the migration files in supabase/migrations/ concatenated in
 -- order, so running it once on a fresh project produces the same result
 -- as running the migrations.
 --
@@ -1169,6 +1169,34 @@ $$;
 
 revoke execute on function public.next_stop_position(uuid) from public;
 grant execute on function public.next_stop_position(uuid) to authenticated;
+
+-- =====================================================================
+-- 20260810120500_backfill_profiles.sql
+-- =====================================================================
+
+-- Backfill profiles for users who already existed.
+--
+-- public.handle_new_user() only fires on INSERT into auth.users, so anyone who
+-- signed up before this schema was applied has no profiles row. Every
+-- broker-owned table has a NOT NULL foreign key to profiles, so their first
+-- save would fail on a constraint violation with nothing useful to go on.
+--
+-- Idempotent, and safe to re-run: ON CONFLICT DO NOTHING leaves existing
+-- profiles untouched, and anonymous users are skipped exactly as the trigger
+-- skips them -- a guest must never acquire a profile, because the absence of
+-- one is part of what keeps them out of broker-owned data.
+
+insert into public.profiles (id, email, full_name)
+select
+  u.id,
+  u.email,
+  coalesce(
+    u.raw_user_meta_data ->> 'full_name',
+    u.raw_user_meta_data ->> 'name'
+  )
+from auth.users u
+where u.is_anonymous is not true
+on conflict (id) do nothing;
 
 -- =====================================================================
 -- 20260810120300_storage.sql

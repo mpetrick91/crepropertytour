@@ -83,10 +83,17 @@ API**, the key is the **Publishable key** under **Project Settings → API Keys*
 (older projects call it the `anon` key). The optional
 secret / `service_role` key bypasses RLS and is not used by the app — leave it unset.
 
-### 2. Turn on anonymous sign-ins
+### 2. Configure auth
 
-The guest flow does not work without this. In the dashboard:
-**Authentication → Sign In / Up → Anonymous sign-ins → enable.**
+The guest flow does not work without anonymous sign-ins. In the dashboard:
+**Authentication → Sign In / Providers → Anonymous sign-ins → enable.**
+
+Then close the door behind you. `signInWithOtp` provisions a user when the email
+is unknown, so an app on a public origin will happily hand a broker account to
+anyone who finds `/login`. Turn **off** *Allow new users to sign up* on the Email
+provider and add broker accounts by hand under **Authentication → Users**. The
+login form translates the resulting "Signups not allowed" error into something a
+human can act on.
 
 While you are there, set **Authentication → URL Configuration → Site URL** to
 your deployed origin and add `http://localhost:3000/auth/callback` to the

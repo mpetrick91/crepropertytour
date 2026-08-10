@@ -5,6 +5,30 @@ import { useState } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 
+/**
+ * Supabase auth errors are written for developers. This is the only screen a
+ * human ever hits cold, so translate the ones that actually come up.
+ */
+function humanAuthError(message: string): string {
+  const text = message.toLowerCase();
+
+  // Raised when email signups are turned off in the dashboard, which is the
+  // recommended setup: broker accounts are added deliberately, not self-served.
+  if (text.includes('signups not allowed') || text.includes('signup is disabled')) {
+    return 'That email is not set up as a broker on this app. Check the spelling, or add the account in Supabase under Authentication → Users.';
+  }
+  if (text.includes('rate limit') || text.includes('too many')) {
+    return 'Too many sign-in emails just went out. Wait a minute and try again.';
+  }
+  if (text.includes('invalid') && text.includes('email')) {
+    return "That doesn't look like a valid email address.";
+  }
+  if (text.includes('fetch') || text.includes('network')) {
+    return 'Could not reach the server. Check your connection and try again.';
+  }
+  return message;
+}
+
 export function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next');
@@ -31,7 +55,7 @@ export function LoginForm() {
     });
 
     if (signInError) {
-      setError(signInError.message);
+      setError(humanAuthError(signInError.message));
       setStatus('idle');
       return;
     }
