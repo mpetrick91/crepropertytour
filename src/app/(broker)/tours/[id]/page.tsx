@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { siteUrl } from '@/lib/env';
@@ -61,7 +62,14 @@ export default async function TourDetailPage({
 
   const stopPropertyIds = new Set((stops ?? []).map((stop) => stop.property_id));
   const available = (properties ?? []).filter((property) => !stopPropertyIds.has(property.id));
-  const origin = siteUrl();
+
+  // Build share links from the host actually serving this page, so the link a
+  // broker copies is always on the domain they are looking at. siteUrl() is the
+  // fallback for contexts without request headers.
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
+  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https';
+  const origin = host ? `${protocol}://${host}` : siteUrl();
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">

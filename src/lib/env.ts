@@ -66,9 +66,25 @@ export function supabaseServiceRoleKey(): string {
   return required('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+/**
+ * Origin used to build share links a client will open days later, so it has to
+ * be an address that outlives this deployment.
+ *
+ * VERCEL_URL is deliberately last: it is the per-deployment hostname
+ * (`project-a1b2c3-team.vercel.app`), which changes on every push and is
+ * eventually deleted by deployment retention. A tour link built from it works
+ * when you test it and 404s for the client a week later.
+ * VERCEL_PROJECT_PRODUCTION_URL is the stable production domain.
+ */
 export function siteUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-  );
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return explicit.replace(/\/+$/, '');
+
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (production) return `https://${production}`;
+
+  const deployment = process.env.VERCEL_URL?.trim();
+  if (deployment) return `https://${deployment}`;
+
+  return 'http://localhost:3000';
 }

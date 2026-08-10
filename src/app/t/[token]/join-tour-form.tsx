@@ -6,6 +6,36 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { TourSharePreview } from '@/lib/supabase/types';
 
+/**
+ * Guests are clients standing in a parking lot, not developers. Translate the
+ * project-configuration failures they can actually hit into something that
+ * tells them who to chase, rather than leaking GoTrue's wording.
+ */
+function humanJoinError(message: string): string {
+  const text = message.toLowerCase();
+
+  // Both of these mean the Supabase project is misconfigured for guests:
+  // anonymous sign-ins switched off, or signups disabled project-wide (which
+  // silently disables anonymous sign-ins along with everything else).
+  if (
+    text.includes('anonymous') ||
+    text.includes('signups not allowed') ||
+    text.includes('signup is disabled')
+  ) {
+    return 'This tour is not accepting guests yet. Let your broker know — it is a setting on their end, not anything you did.';
+  }
+  if (text.includes('no longer valid') || text.includes('42501')) {
+    return 'This tour link has been turned off. Ask your broker for a new one.';
+  }
+  if (text.includes('rate limit') || text.includes('too many')) {
+    return 'Too many attempts just now. Wait a moment and try again.';
+  }
+  if (text.includes('fetch') || text.includes('network')) {
+    return 'Could not reach the server. Check your signal and try again.';
+  }
+  return message;
+}
+
 function formatTourDate(date: string | null): string | null {
   if (!date) return null;
   // The column is a bare date; parsing it as UTC keeps it from sliding a day
@@ -57,7 +87,9 @@ export function JoinTourForm({
 
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Something went wrong.');
+      setError(
+        caught instanceof Error ? humanJoinError(caught.message) : 'Something went wrong.',
+      );
       setBusy(false);
     }
   }

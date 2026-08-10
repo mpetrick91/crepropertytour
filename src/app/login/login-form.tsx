@@ -51,7 +51,16 @@ export function LoginForm() {
 
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: callback.toString() },
+      options: {
+        emailRedirectTo: callback.toString(),
+        // Broker accounts are added deliberately in the Supabase dashboard;
+        // this endpoint only ever mails a link to one that already exists.
+        //
+        // It has to be enforced here rather than by disabling signups in the
+        // project, because that setting is global and would also block the
+        // anonymous sign-ins every client tour link depends on.
+        shouldCreateUser: false,
+      },
     });
 
     if (signInError) {
