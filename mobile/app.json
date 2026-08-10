@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "CRE Property Tour",
+    "slug": "crepropertytour",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "crepropertytour",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.mpcorporaterealty.crepropertytour",
+      "supportsTablet": true,
+      "associatedDomains": ["applinks:crepropertytour.vercel.app"],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take photos of a building while you walk it, so they end up on the right stop of the tour.",
+        "NSPhotoLibraryUsageDescription": "Attach photos from your library to a stop on the tour."
+      }
+    },
+    "android": {
+      "package": "com.mpcorporaterealty.crepropertytour",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "crepropertytour.vercel.app",
+              "pathPrefix": "/t"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-image-picker",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#14304F",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

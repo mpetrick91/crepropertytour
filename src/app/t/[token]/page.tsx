@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { ShareInvalidReason, TourSharePreview } from '@/lib/supabase/types';
 
 import { JoinTourForm } from './join-tour-form';
+import { OpenInApp } from './open-in-app';
 import { GuestTourView } from './guest-tour-view';
 
 export const metadata = { title: 'Your tour | CRE Property Tour' };
@@ -69,5 +70,10 @@ export default async function GuestTourPage({ params }: PageProps<'/t/[token]'>)
     }
   }
 
-  return <JoinTourForm token={token} preview={preview} />;
+  return (
+    <main className="mx-auto w-full max-w-sm flex-1 p-6">
+      <OpenInApp token={token} />
+      <JoinTourForm token={token} preview={preview} />
+    </main>
+  );
 }
