@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Expo app is a separate package with its own toolchain; linting it
+    // with the Next.js config reports nonsense about React Native components.
+    "mobile/**",
   ]),
 ]);
 

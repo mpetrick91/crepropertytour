@@ -97,7 +97,7 @@ export function JoinTourForm({
   const date = formatTourDate(preview.tour_date);
 
   return (
-    <main className="flex flex-1 items-center justify-center p-6">
+    <div className="flex flex-1 flex-col justify-center">
       <div className="w-full max-w-sm">
         <p className="text-sm text-muted-foreground">
           {preview.broker_name ?? 'Your broker'}
@@ -158,6 +158,6 @@ export function JoinTourForm({
           </p>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

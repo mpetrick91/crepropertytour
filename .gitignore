@@ -42,3 +42,9 @@ next-env.d.ts
 
 # keep the template committed; real secrets live in .env.local
 !.env.example
+
+# Expo
+mobile/.expo/
+mobile/dist/
+mobile/ios/
+mobile/android/
