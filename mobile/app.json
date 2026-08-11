@@ -23,7 +23,7 @@
     "android": {
       "package": "com.mpcorporaterealty.crepropertytour",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0A2158",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -57,7 +57,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#14304F",
+          "backgroundColor": "#0A2158",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -66,6 +66,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "backgroundColor": "#0A2158"
   }
 }

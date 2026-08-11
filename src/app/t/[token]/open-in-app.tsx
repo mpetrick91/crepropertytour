@@ -53,7 +53,7 @@ export function OpenInApp({ token }: { token: string }) {
       <div className="mt-3 flex flex-wrap gap-2">
         <a
           href={storeUrl}
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white dark:text-[#0c0f13]"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white dark:text-[#070B14]"
         >
           Get the app
         </a>

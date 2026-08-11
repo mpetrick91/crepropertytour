@@ -176,8 +176,8 @@ export default function ToursScreen() {
                           paddingVertical: space.sm,
                         }}
                       >
-                        <Ionicons name="chatbubble-ellipses" size={15} color={t.accent} />
-                        <BodyStrong style={{ color: t.accent, fontSize: 14 }}>
+                        <Ionicons name="chatbubble-ellipses" size={15} color={t.accentInk} />
+                        <BodyStrong style={{ color: t.accentInk, fontSize: 14 }}>
                           {notes} piece{notes === 1 ? '' : 's'} of client feedback
                         </BodyStrong>
                       </View>

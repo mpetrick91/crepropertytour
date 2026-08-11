@@ -9,6 +9,45 @@ import { Caption, Title, Touchable } from '@/components/ui';
 import { headerGradient, radius, space, useTheme } from '@/lib/theme';
 
 /**
+ * The amber dot matrix from the Cresa mark, echoed in the corner of every
+ * header. Quiet enough to be texture rather than decoration, and the one place
+ * the brand's own geometry shows up in the product.
+ */
+function DotMatrix() {
+  const pattern = [
+    [1, 0, 1, 1],
+    [1, 0, 1, 0],
+    [0, 1, 0, 1],
+    [1, 0, 0, 0],
+  ];
+
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ position: 'absolute', top: 0, right: space.lg, opacity: 0.5 }}
+    >
+      {pattern.map((row, y) => (
+        <View key={y} style={{ flexDirection: 'row' }}>
+          {row.map((on, x) => (
+            <View
+              key={x}
+              style={{
+                width: 7,
+                height: 7,
+                margin: 2.5,
+                backgroundColor: on ? '#FAA61A' : 'transparent',
+              }}
+            />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
  * The coloured header every screen opens with.
  *
  * A gradient band rather than a plain navigation bar: it gives the app a top
@@ -45,8 +84,11 @@ export function ScreenHeader({
           paddingHorizontal: space.lg,
           borderBottomLeftRadius: radius.xl,
           borderBottomRightRadius: radius.xl,
+          overflow: 'hidden',
         }}
       >
+        <DotMatrix />
+
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
           {back ? (
             <Touchable

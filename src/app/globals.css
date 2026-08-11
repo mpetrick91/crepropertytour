@@ -2,11 +2,11 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --muted: #f4f5f7;
-  --muted-foreground: #5b6472;
-  --border: #e3e6ea;
-  --accent: #14304f;
+  --foreground: #0A1424;
+  --muted: #F1F4F9;
+  --muted-foreground: #556173;
+  --border: #DCE3ED;
+  --accent: #0A2158;
 }
 
 @theme inline {
@@ -22,12 +22,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0c0f13;
+    --background: #070B14;
     --foreground: #ededed;
-    --muted: #171b21;
+    --muted: #111A2B;
     --muted-foreground: #9aa4b2;
-    --border: #262c34;
-    --accent: #7fb2e5;
+    --border: #233047;
+    --accent: #7FA0E0;
   }
 }
 
