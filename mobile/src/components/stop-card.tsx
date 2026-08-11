@@ -1,11 +1,13 @@
-import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
 
 import {
-  Body,
+  BodyStrong,
   Button,
+  Caption,
   Card,
   ErrorText,
   Field,
@@ -13,10 +15,12 @@ import {
   Muted,
   Stars,
   StopNumber,
+  Touchable,
+  haptic,
 } from '@/components/ui';
 import { cityState, formatRate, formatSf, humanError } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { radius, spacing, TAP_TARGET, useTheme } from '@/lib/theme';
+import { radius, space, useTheme } from '@/lib/theme';
 import { TOUR_PHOTOS_BUCKET, tourPhotoPath, type GuestProperty } from '@/lib/types';
 
 export type NoteView = {
@@ -62,25 +66,28 @@ export function StopCard({
   const t = useTheme();
   const [body, setBody] = useState('');
   const [rating, setRating] = useState<number | null>(null);
+  const [composing, setComposing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const title = property?.name ?? property?.address_line1 ?? 'Property';
-  const location = cityState(property?.city, property?.state);
-  const address = [property?.address_line1, location].filter(Boolean).join(', ');
+  const address = [property?.address_line1, cityState(property?.city, property?.state)]
+    .filter(Boolean)
+    .join(', ');
 
   const facts = [
     formatSf(property?.available_sf),
     formatRate(property?.rent_rate, property?.rent_type),
-    property?.clear_height_ft ? `${property.clear_height_ft} ft clear` : null,
+    property?.clear_height_ft ? `${property.clear_height_ft}′ clear` : null,
     property?.dock_doors ? `${property.dock_doors} docks` : null,
   ].filter(Boolean) as string[];
+
+  const mine = notes.find((note) => note.isMine);
 
   function openDirections() {
     if (!address) return;
     const query = encodeURIComponent(address);
-    // Apple Maps on iOS, Google Maps elsewhere -- whichever the phone expects.
     const url =
       Platform.OS === 'ios'
         ? `http://maps.apple.com/?daddr=${query}`
@@ -107,8 +114,10 @@ export function StopCard({
       return;
     }
 
+    haptic('success');
     setBody('');
     setRating(null);
+    setComposing(false);
     setBusy(false);
     await onChanged();
   }
@@ -120,10 +129,7 @@ export function StopCard({
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const { error: deleteError } = await supabase
-            .from('stop_notes')
-            .delete()
-            .eq('id', noteId);
+          const { error: deleteError } = await supabase.from('stop_notes').delete().eq('id', noteId);
           if (deleteError) setError(humanError(deleteError.message));
           else await onChanged();
         },
@@ -151,10 +157,7 @@ export function StopCard({
     const result =
       source === 'camera'
         ? await ImagePicker.launchCameraAsync({ quality: 0.7, exif: false })
-        : await ImagePicker.launchImageLibraryAsync({
-            quality: 0.7,
-            mediaTypes: ['images'],
-          });
+        : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, mediaTypes: ['images'] });
 
     if (result.canceled || !result.assets?.length) return;
     await upload(result.assets[0]);
@@ -174,14 +177,13 @@ export function StopCard({
       }
 
       const filename = asset.fileName ?? `photo-${Date.now()}.jpg`;
-      const contentType = asset.mimeType ?? 'image/jpeg';
       // The tour id has to lead the key -- that is what the storage policies
       // parse to decide whether this person may write here.
       const path = tourPhotoPath(tourId, stopId, filename);
 
       const { error: uploadError } = await supabase.storage
         .from(TOUR_PHOTOS_BUCKET)
-        .upload(path, bytes, { contentType, upsert: false });
+        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: false });
 
       if (uploadError) {
         setError(humanError(uploadError.message));
@@ -205,6 +207,7 @@ export function StopCard({
         return;
       }
 
+      haptic('success');
       await onChanged();
     } catch (caught) {
       setError(caught instanceof Error ? humanError(caught.message) : 'Upload failed.');
@@ -214,6 +217,10 @@ export function StopCard({
   }
 
   function choosePhotoSource() {
+    if (Platform.OS === 'web') {
+      pickPhoto('library');
+      return;
+    }
     Alert.alert('Add a photo', undefined, [
       { text: 'Take photo', onPress: () => pickPhoto('camera') },
       { text: 'Choose from library', onPress: () => pickPhoto('library') },
@@ -222,117 +229,235 @@ export function StopCard({
   }
 
   return (
-    <Card style={{ gap: spacing.md }}>
-      <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' }}>
-        <StopNumber n={index + 1} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Heading>{title}</Heading>
-          {address ? (
-            <Pressable
-              onPress={openDirections}
-              accessibilityRole="link"
-              accessibilityHint="Opens directions in maps"
-              hitSlop={6}
-            >
-              <Muted style={{ textDecorationLine: 'underline' }}>{address}</Muted>
-            </Pressable>
-          ) : null}
-          {facts.length ? (
-            <Muted style={{ fontVariant: ['tabular-nums'] }}>{facts.join(' · ')}</Muted>
-          ) : null}
-          {property?.description ? (
-            <Body style={{ marginTop: spacing.xs }}>{property.description}</Body>
-          ) : null}
+    <Card level={2} style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Header ------------------------------------------------------- */}
+      <View style={{ padding: space.lg, gap: space.md }}>
+        <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
+          <StopNumber n={index + 1} />
+          <View style={{ flex: 1, gap: 3 }}>
+            <Heading>{title}</Heading>
+            {address ? (
+              <Touchable
+                onPress={openDirections}
+                accessibilityRole="link"
+                accessibilityLabel={`Directions to ${address}`}
+                scaleTo={0.98}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <Ionicons name="navigate-circle" size={16} color={t.accent} />
+                <Muted style={{ color: t.accent, flex: 1 }}>{address}</Muted>
+              </Touchable>
+            ) : null}
+          </View>
         </View>
+
+        {facts.length ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {facts.map((fact) => (
+              <View
+                key={fact}
+                style={{
+                  backgroundColor: t.surfaceSunken,
+                  borderRadius: radius.sm,
+                  paddingHorizontal: space.md,
+                  paddingVertical: 6,
+                }}
+              >
+                <Caption style={{ color: t.textMuted, fontVariant: ['tabular-nums'] }}>
+                  {fact}
+                </Caption>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {property?.description ? <Muted>{property.description}</Muted> : null}
       </View>
 
+      {/* Photos ------------------------------------------------------- */}
       {photos.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            {photos.map((photo) =>
-              photo.url ? (
-                <Image
-                  key={photo.id}
-                  source={{ uri: photo.url }}
-                  style={{ width: 108, height: 108, borderRadius: radius.sm }}
-                  contentFit="cover"
-                  transition={150}
-                  accessibilityLabel={photo.caption ?? 'Tour photo'}
-                />
-              ) : (
-                <View
-                  key={photo.id}
-                  style={{
-                    width: 108,
-                    height: 108,
-                    borderRadius: radius.sm,
-                    backgroundColor: t.surface,
-                  }}
-                />
-              ),
-            )}
-          </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: space.lg, gap: space.sm, paddingBottom: space.lg }}
+        >
+          {photos.map((photo) =>
+            photo.url ? (
+              <Image
+                key={photo.id}
+                source={{ uri: photo.url }}
+                style={{ width: 132, height: 132, borderRadius: radius.md }}
+                contentFit="cover"
+                transition={200}
+                accessibilityLabel={photo.caption ?? 'Tour photo'}
+              />
+            ) : (
+              <View
+                key={photo.id}
+                style={{
+                  width: 132,
+                  height: 132,
+                  borderRadius: radius.md,
+                  backgroundColor: t.surfaceSunken,
+                }}
+              />
+            ),
+          )}
         </ScrollView>
       ) : null}
 
-      {notes.map((note) => (
-        <View
-          key={note.id}
-          style={{ backgroundColor: t.surface, borderRadius: radius.sm, padding: spacing.md, gap: 4 }}
-        >
-          <View
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <Body style={{ fontWeight: '600' }}>{note.isMine ? 'You' : note.authorName}</Body>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              {note.rating ? <Stars value={note.rating} size={14} /> : null}
-              {note.isMine ? (
-                <Pressable
-                  onPress={() => confirmDeleteNote(note.id)}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete your note"
-                >
-                  <Muted style={{ textDecorationLine: 'underline' }}>Delete</Muted>
-                </Pressable>
-              ) : null}
+      {/* Notes -------------------------------------------------------- */}
+      {notes.length ? (
+        <View style={{ paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.sm }}>
+          {notes.map((note) => (
+            <View
+              key={note.id}
+              style={{
+                backgroundColor: note.isMine ? t.accentSoft : t.surfaceSunken,
+                borderRadius: radius.md,
+                padding: space.md,
+                gap: 4,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: space.sm,
+                }}
+              >
+                <Caption style={{ color: note.isMine ? t.accent : t.textMuted, fontWeight: '800' }}>
+                  {note.isMine ? 'YOU' : note.authorName.toUpperCase()}
+                </Caption>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                  {note.rating ? <Stars value={note.rating} size={13} /> : null}
+                  {note.isMine ? (
+                    <Touchable
+                      onPress={() => confirmDeleteNote(note.id)}
+                      accessibilityLabel="Delete your note"
+                      scaleTo={0.85}
+                      haptic="warning"
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons name="trash-outline" size={15} color={t.textFaint} />
+                    </Touchable>
+                  ) : null}
+                </View>
+              </View>
+              <BodyStrong style={{ fontSize: 15, fontWeight: '400' }}>{note.body}</BodyStrong>
             </View>
-          </View>
-          <Body>{note.body}</Body>
+          ))}
         </View>
-      ))}
+      ) : null}
 
-      {canAddNotes ? (
-        <View style={{ gap: spacing.md }}>
+      {/* Compose ------------------------------------------------------ */}
+      {canAddNotes && composing ? (
+        <View style={{ paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.md }}>
           <Field
-            label="Your notes"
+            label="Your thoughts"
             value={body}
             onChangeText={setBody}
             placeholder="What stood out here?"
             multiline
-            numberOfLines={3}
-            style={{ minHeight: TAP_TARGET * 1.8, textAlignVertical: 'top' }}
+            autoFocus
+            style={{ minHeight: 88, textAlignVertical: 'top', paddingTop: space.md }}
           />
-          <View
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
+          <View style={{ alignItems: 'center', gap: space.sm }}>
+            <Caption>How does it rate?</Caption>
             <Stars value={rating} onChange={setRating} />
-            <Button title="Add note" onPress={addNote} busy={busy} disabled={!body.trim()} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            <Button
+              title="Cancel"
+              variant="ghost"
+              size="md"
+              onPress={() => {
+                setComposing(false);
+                setBody('');
+                setRating(null);
+              }}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title="Save note"
+              size="md"
+              onPress={addNote}
+              busy={busy}
+              disabled={!body.trim()}
+              style={{ flex: 2 }}
+            />
           </View>
         </View>
       ) : null}
 
-      {canAddPhotos ? (
-        <Button
-          title={uploading ? 'Uploading…' : 'Add photo'}
-          variant="secondary"
-          onPress={choosePhotoSource}
-          busy={uploading}
-        />
+      {/* Actions ------------------------------------------------------ */}
+      {(canAddNotes || canAddPhotos) && !composing ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            borderTopWidth: 1,
+            borderTopColor: t.border,
+          }}
+        >
+          {canAddNotes ? (
+            <Action
+              icon={mine ? 'create-outline' : 'chatbubble-outline'}
+              label={mine ? 'Add another note' : 'Add a note'}
+              onPress={() => setComposing(true)}
+            />
+          ) : null}
+          {canAddNotes && canAddPhotos ? (
+            <View style={{ width: 1, backgroundColor: t.border }} />
+          ) : null}
+          {canAddPhotos ? (
+            <Action
+              icon="camera-outline"
+              label={uploading ? 'Uploading…' : 'Photo'}
+              onPress={choosePhotoSource}
+              disabled={uploading}
+            />
+          ) : null}
+        </View>
       ) : null}
 
-      <ErrorText>{error}</ErrorText>
+      {error ? (
+        <View style={{ padding: space.lg, paddingTop: 0 }}>
+          <ErrorText>{error}</ErrorText>
+        </View>
+      ) : null}
     </Card>
   );
 }
 
+function Action({
+  icon,
+  label,
+  onPress,
+  disabled,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <Touchable
+      onPress={onPress}
+      disabled={disabled}
+      scaleTo={0.96}
+      style={{
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: space.sm,
+        paddingVertical: space.lg,
+      }}
+    >
+      <Ionicons name={icon} size={19} color={t.primary} />
+      <BodyStrong style={{ color: t.primary, fontSize: 15 }}>{label}</BodyStrong>
+    </Touchable>
+  );
+}

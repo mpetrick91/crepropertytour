@@ -13,13 +13,13 @@ import {
   Heading,
   InternalNote,
   Muted,
-  SectionLabel,
+  Label,
   StopNumber,
   Title,
 } from '@/components/ui';
 import { cityState, formatRate, formatSf, formatTourDate, humanError } from '@/lib/format';
 import { siteUrl, supabase } from '@/lib/supabase';
-import { radius, spacing, useTheme } from '@/lib/theme';
+import { radius, space, useTheme } from '@/lib/theme';
 import type { Property, Tour, TourShare } from '@/lib/types';
 
 type StopRow = {
@@ -193,7 +193,7 @@ export default function TourDetailScreen() {
 
   if (!tour) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl }}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: space.xl }}>
         <Title>Tour not found</Title>
       </View>
     );
@@ -206,12 +206,12 @@ export default function TourDetailScreen() {
   return (
     <ScrollView
       contentContainerStyle={{
-        padding: spacing.lg,
-        paddingBottom: insets.bottom + spacing.xxl,
-        gap: spacing.lg,
+        padding: space.lg,
+        paddingBottom: insets.bottom + space.xxl,
+        gap: space.lg,
       }}
     >
-      <View style={{ gap: spacing.xs }}>
+      <View style={{ gap: space.xs }}>
         <Title>{tour.title}</Title>
         <Muted>
           {[formatTourDate(tour.tour_date), tour.market].filter(Boolean).join(' · ')}
@@ -228,10 +228,12 @@ export default function TourDetailScreen() {
 
       {tour.notes ? <InternalNote>{tour.notes}</InternalNote> : null}
 
-      <SectionLabel>Itinerary</SectionLabel>
+      <Label>Itinerary</Label>
 
       {!stops.length ? (
-        <Empty>No stops yet. Add buildings from your library below.</Empty>
+        <Empty icon="add-circle-outline" title="No stops yet">
+          Pick buildings from your library below to build the route.
+        </Empty>
       ) : (
         stops.map((stop, index) => {
           const property = stop.properties;
@@ -242,8 +244,8 @@ export default function TourDetailScreen() {
           ].filter(Boolean);
 
           return (
-            <Card key={stop.id} style={{ gap: spacing.md }}>
-              <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' }}>
+            <Card key={stop.id} style={{ gap: space.md }}>
+              <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
                 <StopNumber n={index + 1} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Heading>{label}</Heading>
@@ -258,7 +260,7 @@ export default function TourDetailScreen() {
 
               {stop.broker_notes ? <InternalNote>{stop.broker_notes}</InternalNote> : null}
 
-              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', gap: space.sm }}>
                 <Button
                   title="↑"
                   variant="secondary"
@@ -286,7 +288,7 @@ export default function TourDetailScreen() {
         })
       )}
 
-      <SectionLabel>Add a building</SectionLabel>
+      <Label>Add a building</Label>
       {!available.length ? (
         <Muted>
           Every property in your library is already on this tour.{' '}
@@ -306,7 +308,7 @@ export default function TourDetailScreen() {
             disabled={busy}
             style={({ pressed }) => ({ opacity: pressed || busy ? 0.6 : 1 })}
           >
-            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
               <View style={{ flex: 1 }}>
                 <Body style={{ fontWeight: '600' }}>
                   {property.name ?? property.address_line1}
@@ -319,7 +321,7 @@ export default function TourDetailScreen() {
         ))
       )}
 
-      <SectionLabel>Client links</SectionLabel>
+      <Label>Client links</Label>
       <Muted>
         Send one of these. Your client taps it, enters their name, and they&apos;re on the
         tour — no account. Turning a link off stops new people joining; anyone already on
@@ -327,15 +329,15 @@ export default function TourDetailScreen() {
       </Muted>
 
       {activeShares.map((share) => (
-        <Card key={share.id} style={{ gap: spacing.md }}>
+        <Card key={share.id} style={{ gap: space.md }}>
           <View
-            style={{ backgroundColor: t.surface, borderRadius: radius.sm, padding: spacing.md }}
+            style={{ backgroundColor: t.surface, borderRadius: radius.sm, padding: space.md }}
           >
             <Body style={{ fontSize: 13 }} selectable numberOfLines={2}>
               {shareUrl(share)}
             </Body>
           </View>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
             <Button title="Send" onPress={() => sendShare(share)} style={{ flex: 2 }} />
             <Button
               title="Copy"

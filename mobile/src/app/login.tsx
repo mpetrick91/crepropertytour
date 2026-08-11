@@ -7,7 +7,7 @@ import { Body, Button, ErrorText, Field, Muted, Title } from '@/components/ui';
 import { humanError } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
-import { spacing, useTheme } from '@/lib/theme';
+import { space, useTheme } from '@/lib/theme';
 
 /**
  * Two ways in, because Supabase's own email has real limits: templates cannot
@@ -120,7 +120,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
+        contentContainerStyle={{ padding: space.xl, gap: space.lg }}
         keyboardShouldPersistTaps="handled"
       >
         <Title>Broker sign-in</Title>
@@ -176,8 +176,8 @@ export default function LoginScreen() {
               style={{
                 backgroundColor: t.surface,
                 borderRadius: 10,
-                padding: spacing.lg,
-                gap: spacing.xs,
+                padding: space.lg,
+                gap: space.xs,
               }}
             >
               <Body style={{ fontWeight: '600' }}>Check your email.</Body>

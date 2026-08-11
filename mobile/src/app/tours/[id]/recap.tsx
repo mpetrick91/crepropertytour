@@ -5,13 +5,13 @@ import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  Badge,
+  Pill,
   Body,
   Card,
   Heading,
   InternalNote,
   Muted,
-  SectionLabel,
+  Label,
   Stars,
   StopNumber,
   Title,
@@ -19,7 +19,7 @@ import {
 import { cityState, formatTourDate } from '@/lib/format';
 import { signedPhotoUrls } from '@/lib/photos';
 import { supabase } from '@/lib/supabase';
-import { radius, spacing, useTheme } from '@/lib/theme';
+import { radius, space, useTheme } from '@/lib/theme';
 import type { Property, Tour } from '@/lib/types';
 
 type StopRow = {
@@ -101,12 +101,12 @@ export default function RecapScreen() {
   return (
     <ScrollView
       contentContainerStyle={{
-        padding: spacing.lg,
-        paddingBottom: insets.bottom + spacing.xxl,
-        gap: spacing.lg,
+        padding: space.lg,
+        paddingBottom: insets.bottom + space.xxl,
+        gap: space.lg,
       }}
     >
-      <View style={{ gap: spacing.xs }}>
+      <View style={{ gap: space.xs }}>
         <Title>{tour?.title}</Title>
         <Muted>
           {[formatTourDate(tour?.tour_date), tour?.market].filter(Boolean).join(' · ')}
@@ -126,8 +126,8 @@ export default function RecapScreen() {
           : null;
 
         return (
-          <View key={stop.id} style={{ gap: spacing.md }}>
-            <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' }}>
+          <View key={stop.id} style={{ gap: space.md }}>
+            <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
               <StopNumber n={index + 1} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Heading>{stop.properties?.name ?? stop.properties?.address_line1}</Heading>
@@ -140,14 +140,14 @@ export default function RecapScreen() {
                     .join(' · ')}
                 </Muted>
               </View>
-              {average ? <Badge>{average.toFixed(1)} avg</Badge> : null}
+              {average ? <Pill>{average.toFixed(1)} avg</Pill> : null}
             </View>
 
             {stop.broker_notes ? <InternalNote>{stop.broker_notes}</InternalNote> : null}
 
             {stopNotes.length ? (
               stopNotes.map((note) => (
-                <Card key={note.id} style={{ gap: spacing.xs }}>
+                <Card key={note.id} style={{ gap: space.xs }}>
                   <View
                     style={{
                       flexDirection: 'row',
@@ -172,7 +172,7 @@ export default function RecapScreen() {
 
             {stopPhotos.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <View style={{ flexDirection: 'row', gap: space.sm }}>
                   {stopPhotos.map((photo) => {
                     const uri = urls.get(photo.storage_path);
                     return uri ? (
@@ -203,7 +203,7 @@ export default function RecapScreen() {
         );
       })}
 
-      {!stops.length ? <SectionLabel>This tour has no stops yet.</SectionLabel> : null}
+      {!stops.length ? <Label>This tour has no stops yet.</Label> : null}
     </ScrollView>
   );
 }

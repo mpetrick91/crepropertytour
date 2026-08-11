@@ -6,7 +6,7 @@ import { PropertyForm, type PropertyDraft } from '@/components/property-form';
 import { Button, Muted, Title } from '@/components/ui';
 import { humanError } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { spacing, useTheme } from '@/lib/theme';
+import { space, useTheme } from '@/lib/theme';
 import type { Property } from '@/lib/types';
 
 export default function EditPropertyScreen() {
@@ -82,7 +82,7 @@ export default function EditPropertyScreen() {
 
   if (!property) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl }}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: space.xl }}>
         <Title>Property not found</Title>
       </View>
     );
@@ -96,7 +96,7 @@ export default function EditPropertyScreen() {
       error={error}
       onSubmit={save}
       footer={
-        <View style={{ gap: spacing.sm, marginTop: spacing.xl }}>
+        <View style={{ gap: space.sm, marginTop: space.xl }}>
           <Button title="Delete property" variant="danger" onPress={confirmDelete} />
           <Muted style={{ textAlign: 'center' }}>
             Blocked while the property is on a tour.

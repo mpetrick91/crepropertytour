@@ -28,6 +28,11 @@ CI=1 EXPO_NO_TELEMETRY=1 EXPO_WEB_BASE_URL=/app \
 # let this install to an iPhone home screen as a standalone app.
 python3 "$MOBILE/scripts/pwa-shell.py" "$BUILD" "$MOBILE/assets/images/icon.png"
 
+# @expo/vector-icons ships every icon font as an asset, but the app only ever
+# imports Ionicons -- the rest are never requested by the browser and would
+# just be ~3.5 MB of dead weight in the repository.
+find "$BUILD/assets" -name "*.ttf" ! -name "Ionicons*" -delete 2>/dev/null || true
+
 rm -rf "$TARGET"
 mkdir -p "$TARGET"
 cp -r "$BUILD/." "$TARGET/"

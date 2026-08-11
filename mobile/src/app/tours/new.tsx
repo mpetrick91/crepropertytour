@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Button, ErrorText, Field, Muted, Title } from '@/components/ui';
 import { humanError } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { spacing } from '@/lib/theme';
+import { space } from '@/lib/theme';
 
 export default function NewTourScreen() {
   const router = useRouter();
@@ -77,7 +77,7 @@ export default function NewTourScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
         <Title>New tour</Title>
@@ -91,7 +91,7 @@ export default function NewTourScreen() {
           autoCapitalize="words"
         />
 
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <Field
               label="Client contact"
@@ -112,7 +112,7 @@ export default function NewTourScreen() {
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <Field
               label="Date"
