@@ -9,48 +9,86 @@ import { useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import { spacing, useTheme } from '@/lib/theme';
 
+/**
+ * Two ways in, because Supabase's own email has real limits: templates cannot
+ * be edited without configuring custom SMTP, and the built-in sender is rate
+ * limited to a handful of messages an hour.
+ *
+ * Password is the default for that reason. It costs no email at all, works
+ * identically in Expo Go, a store build and the browser, and needs no deep link
+ * coming back. Nothing is lost by it either -- the only Supabase email this app
+ * ever sends is a broker signing themselves in. Clients receive their tour link
+ * from the broker's own text or email, never from Supabase.
+ */
+type Mode = 'password' | 'email-sent';
+
 export default function LoginScreen() {
   const { isBroker } = useSession();
   const t = useTheme();
 
+  const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'verifying'>('idle');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (isBroker) return <Redirect href="/tours" />;
 
   function describe(message: string): string {
-    return /signups not allowed|not found|user not found/i.test(message)
-      ? 'That email is not set up as a broker on this app. Check the spelling, or add the account in Supabase under Authentication → Users.'
-      : humanError(message);
+    if (/invalid login credentials/i.test(message)) {
+      return 'That email and password do not match an account. You can set or change the password in Supabase under Authentication → Users.';
+    }
+    if (/signups not allowed|user not found/i.test(message)) {
+      return 'That email is not set up as a broker on this app. Add the account in Supabase under Authentication → Users.';
+    }
+    if (/email not confirmed/i.test(message)) {
+      return 'That account has not been confirmed. In Supabase under Authentication → Users, edit the user and confirm their email.';
+    }
+    return humanError(message);
   }
 
-  async function sendCode() {
+  async function signInWithPassword() {
     setError(null);
-    setStatus('sending');
+    setBusy(true);
 
-    const { error: signInError } = await supabase.auth.signInWithOtp({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
-      options: {
-        // The same email carries both a tappable link and a six-digit code.
-        // The link only works in a real build that owns the URL scheme, so the
-        // code is what makes this usable in Expo Go and anywhere else.
-        emailRedirectTo: Linking.createURL('/'),
-        // Broker accounts are added deliberately in the Supabase dashboard.
-        // Enforced here rather than by disabling signups project-wide, because
-        // that switch would also block the anonymous sessions guests need.
-        shouldCreateUser: false,
-      },
+      password,
     });
 
     if (signInError) {
       setError(describe(signInError.message));
-      setStatus('idle');
+      setBusy(false);
+    }
+    // On success the session listener redirects; leave the spinner running.
+  }
+
+  async function sendEmailLink() {
+    if (!email.trim()) {
+      setError('Enter your email first.');
       return;
     }
+    setError(null);
+    setBusy(true);
 
-    setStatus('sent');
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: Linking.createURL('/'),
+        // Broker accounts are added deliberately in the dashboard. Enforced
+        // here rather than by disabling signups project-wide, because that
+        // switch would also block the anonymous sessions guests depend on.
+        shouldCreateUser: false,
+      },
+    });
+
+    setBusy(false);
+    if (otpError) {
+      setError(describe(otpError.message));
+      return;
+    }
+    setMode('email-sent');
   }
 
   async function verifyCode() {
@@ -58,10 +96,8 @@ export default function LoginScreen() {
     if (token.length < 6) return;
 
     setError(null);
-    setStatus('verifying');
+    setBusy(true);
 
-    // Signs in without any redirect at all, which is why it works on a device
-    // that cannot receive the deep link.
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email: email.trim(),
       token,
@@ -74,10 +110,8 @@ export default function LoginScreen() {
           ? 'That code is wrong or has expired. Send a new one and try again.'
           : humanError(verifyError.message),
       );
-      setStatus('sent');
-      return;
+      setBusy(false);
     }
-    // The session listener in SessionProvider redirects from here.
   }
 
   return (
@@ -94,7 +128,49 @@ export default function LoginScreen() {
           Clients don&apos;t need an account — they just open the tour link you send them.
         </Body>
 
-        {status === 'sent' || status === 'verifying' ? (
+        <Field
+          label="Work email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@cresa.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          inputMode="email"
+          editable={mode === 'password'}
+        />
+
+        {mode === 'password' ? (
+          <>
+            <Field
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={signInWithPassword}
+            />
+
+            <ErrorText>{error}</ErrorText>
+
+            <Button
+              title="Sign in"
+              onPress={signInWithPassword}
+              busy={busy}
+              disabled={!email.trim() || !password}
+            />
+
+            <Pressable onPress={sendEmailLink} hitSlop={10} accessibilityRole="button">
+              <Muted style={{ textAlign: 'center', textDecorationLine: 'underline' }}>
+                Email me a sign-in link instead
+              </Muted>
+            </Pressable>
+          </>
+        ) : (
           <>
             <View
               style={{
@@ -106,8 +182,8 @@ export default function LoginScreen() {
             >
               <Body style={{ fontWeight: '600' }}>Check your email.</Body>
               <Muted>
-                Sent to {email.trim()}. Tap the link in it, or type the 6-digit code below —
-                either works.
+                Sent to {email.trim()}. Tap the link in it — or if the email includes a
+                6-digit code, type that below.
               </Muted>
             </View>
 
@@ -131,7 +207,7 @@ export default function LoginScreen() {
             <Button
               title="Sign in"
               onPress={verifyCode}
-              busy={status === 'verifying'}
+              busy={busy}
               disabled={code.replace(/\D/g, '').length < 6}
             />
 
@@ -139,38 +215,15 @@ export default function LoginScreen() {
               onPress={() => {
                 setCode('');
                 setError(null);
-                setStatus('idle');
+                setMode('password');
               }}
               hitSlop={10}
               accessibilityRole="button"
             >
               <Muted style={{ textAlign: 'center', textDecorationLine: 'underline' }}>
-                Use a different email
+                Use a password instead
               </Muted>
             </Pressable>
-          </>
-        ) : (
-          <>
-            <Field
-              label="Work email"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@cresa.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              inputMode="email"
-              returnKeyType="go"
-              onSubmitEditing={sendCode}
-            />
-            <ErrorText>{error}</ErrorText>
-            <Button
-              title="Email me a sign-in code"
-              onPress={sendCode}
-              busy={status === 'sending'}
-              disabled={!email.trim()}
-            />
           </>
         )}
       </ScrollView>
