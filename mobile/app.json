@@ -12,7 +12,9 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.mpcorporaterealty.crepropertytour",
       "supportsTablet": true,
-      "associatedDomains": ["applinks:crepropertytour.vercel.app"],
+      "associatedDomains": [
+        "applinks:crepropertytour.vercel.app"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "Take photos of a building while you walk it, so they end up on the right stop of the tour.",
         "NSPhotoLibraryUsageDescription": "Attach photos from your library to a stop on the tour."
@@ -38,12 +40,15 @@
               "pathPrefix": "/t"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

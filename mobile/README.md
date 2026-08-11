@@ -74,3 +74,15 @@ Aliases and helpers live in `src/lib/types.ts` and survive that copy.
   and hands them to `setSession` explicitly.
 - Sessions persist in AsyncStorage, so a guest who joined last week is still on
   the tour when they reopen the app.
+
+## Browser preview
+
+`./scripts/build-web-preview.sh` bundles this app for the browser into the
+website's `public/app/`, so it can be opened at `<site>/app/` on a phone with no
+install and no app store account. Same code, same database — what it cannot do
+is anything native: no camera capture (it falls back to a file picker), and no
+tapping a tour link to open the app.
+
+The bundle is committed, so it is built with no project values in it. It reads
+them from `/app-config.js` at load time instead, which the website serves from
+its own environment.

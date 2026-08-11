@@ -10,6 +10,13 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  */
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
+  experiments: {
+    ...config.experiments,
+    // The browser preview is served from <site>/app/, not the root, so the
+    // export has to prefix every asset and bundle URL. Unset for device
+    // builds, where there is no such prefix.
+    ...(process.env.EXPO_WEB_BASE_URL ? { baseUrl: process.env.EXPO_WEB_BASE_URL } : {}),
+  },
   extra: {
     ...config.extra,
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
