@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Body, Button, Muted, Title } from '@/components/ui';
 import { useSession } from '@/lib/session';
-import { spacing, useTheme } from '@/lib/theme';
+import { space, useTheme } from '@/lib/theme';
 
 /**
  * Front door. A broker lands on their tours; anyone else gets the pitch and a
@@ -30,10 +30,10 @@ export default function IndexScreen() {
       contentContainerStyle={{
         flexGrow: 1,
         justifyContent: 'center',
-        padding: spacing.xl,
-        paddingTop: insets.top + spacing.xxl,
-        paddingBottom: insets.bottom + spacing.xxl,
-        gap: spacing.lg,
+        padding: space.xl,
+        paddingTop: insets.top + space.xxl,
+        paddingBottom: insets.bottom + space.xxl,
+        gap: space.lg,
       }}
     >
       <Title>CRE Property Tour</Title>
@@ -42,7 +42,7 @@ export default function IndexScreen() {
         walkthrough in one place.
       </Body>
 
-      <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
+      <View style={{ gap: space.md, marginTop: space.lg }}>
         <Link href="/login" asChild>
           <Button title="Broker sign-in" onPress={() => {}} />
         </Link>

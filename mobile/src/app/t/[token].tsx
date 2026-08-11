@@ -4,11 +4,11 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, View } f
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StopCard } from '@/components/stop-card';
-import { Body, Button, ErrorText, Field, Muted, SectionLabel, Title } from '@/components/ui';
+import { Body, Button, ErrorText, Field, Muted, Label, Title } from '@/components/ui';
 import { formatTourDate, humanError } from '@/lib/format';
 import { signedPhotoUrls } from '@/lib/photos';
 import { supabase } from '@/lib/supabase';
-import { spacing, useTheme } from '@/lib/theme';
+import { space, useTheme } from '@/lib/theme';
 import {
   type GuestProperty,
   type GuestTour,
@@ -200,7 +200,7 @@ export default function GuestTourScreen() {
 
   if (!preview?.valid || !preview.tour_id) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.md }}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: space.xl, gap: space.md }}>
         <Title>Tour unavailable</Title>
         <Body style={{ color: t.textMuted }}>
           {INVALID_COPY[preview?.reason ?? 'not_found'] ?? INVALID_COPY.not_found}
@@ -218,13 +218,13 @@ export default function GuestTourScreen() {
       >
         <ScrollView
           contentContainerStyle={{
-            padding: spacing.xl,
-            paddingBottom: insets.bottom + spacing.xxl,
-            gap: spacing.lg,
+            padding: space.xl,
+            paddingBottom: insets.bottom + space.xxl,
+            gap: space.lg,
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ gap: spacing.xs }}>
+          <View style={{ gap: space.xs }}>
             <Muted>
               {preview.broker_name ?? 'Your broker'}
               {preview.broker_company ? ` · ${preview.broker_company}` : ''} invited you to
@@ -289,13 +289,13 @@ export default function GuestTourScreen() {
   return (
     <ScrollView
       contentContainerStyle={{
-        padding: spacing.lg,
-        paddingBottom: insets.bottom + spacing.xxl,
-        gap: spacing.lg,
+        padding: space.lg,
+        paddingBottom: insets.bottom + space.xxl,
+        gap: space.lg,
       }}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={{ gap: spacing.xs }}>
+      <View style={{ gap: space.xs }}>
         <Title>{tour?.title ?? preview.tour_title}</Title>
         <Muted>
           {[formatTourDate(tour?.tour_date), tour?.market].filter(Boolean).join(' · ')}
@@ -303,12 +303,12 @@ export default function GuestTourScreen() {
       </View>
 
       {tour?.requirement_summary ? (
-        <View style={{ backgroundColor: t.surface, borderRadius: 10, padding: spacing.lg }}>
+        <View style={{ backgroundColor: t.surface, borderRadius: 10, padding: space.lg }}>
           <Body>{tour.requirement_summary}</Body>
         </View>
       ) : null}
 
-      <SectionLabel>Itinerary</SectionLabel>
+      <Label>Itinerary</Label>
 
       {stops.map((stop, index) => (
         <StopCard

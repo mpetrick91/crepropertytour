@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
-import { Button, ErrorText, Field, Muted, SectionLabel, Title } from '@/components/ui';
-import { spacing } from '@/lib/theme';
+import { Button, ErrorText, Field, Muted, Label, Title } from '@/components/ui';
+import { space } from '@/lib/theme';
 import type { Property, PropertyInsert } from '@/lib/types';
 
 /** Blank string means "not filled in", which has to become null, not 0 or ''. */
@@ -73,13 +73,13 @@ export function PropertyForm({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
         <Title>{property ? 'Edit property' : 'Add property'}</Title>
         <Muted>Only the street address is required. Fill in the rest as it&apos;s confirmed.</Muted>
 
-        <SectionLabel>Location</SectionLabel>
+        <Label>Location</Label>
         <Field label="Building name" value={name} onChangeText={setName} autoCapitalize="words" />
         <Field
           label="Street address"
@@ -88,7 +88,7 @@ export function PropertyForm({
           autoCapitalize="words"
           placeholder="4600 Fisher Rd"
         />
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 2 }}>
             <Field label="City" value={city} onChangeText={setCity} autoCapitalize="words" />
           </View>
@@ -103,8 +103,8 @@ export function PropertyForm({
           </View>
         </View>
 
-        <SectionLabel>Building</SectionLabel>
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <Label>Building</Label>
+        <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <Field
               label="Building SF"
@@ -124,7 +124,7 @@ export function PropertyForm({
             />
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <Field
               label="Clear height (ft)"
@@ -145,8 +145,8 @@ export function PropertyForm({
           </View>
         </View>
 
-        <SectionLabel>Economics</SectionLabel>
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <Label>Economics</Label>
+        <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <Field
               label="Rate $/SF NNN"
@@ -167,7 +167,7 @@ export function PropertyForm({
           </View>
         </View>
 
-        <SectionLabel>Notes</SectionLabel>
+        <Label>Notes</Label>
         <Field
           label="Client-facing description"
           value={description}
