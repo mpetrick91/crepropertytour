@@ -4,8 +4,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAnonKey, supabaseUrl } from '@/lib/env';
 import type { Database } from './database.types';
 
-/** Paths a signed-out visitor may reach. Everything else redirects to /login. */
-const PUBLIC_PREFIXES = ['/login', '/auth', '/t/'];
+/**
+ * Paths a signed-out visitor may reach. Everything else redirects to /login.
+ *
+ * `/app` is the browser build of the mobile app and `/app-config.js` is the
+ * config it loads first: both must stay reachable while signed out, because
+ * the app does its own sign-in inside that page.
+ */
+const PUBLIC_PREFIXES = ['/login', '/auth', '/t/', '/app', '/app-config.js'];
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === '/') return true;

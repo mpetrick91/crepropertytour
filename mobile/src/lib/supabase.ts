@@ -10,7 +10,25 @@ import type { Database } from './database.types';
  * time by app.config.ts), because process.env is not available on device the
  * way it is in Next.js.
  */
-function requiredExtra(key: 'supabaseUrl' | 'supabaseAnonKey' | 'siteUrl'): string {
+type ConfigKey = 'supabaseUrl' | 'supabaseAnonKey' | 'siteUrl';
+
+/**
+ * The browser preview build is served from the website and gets its config at
+ * runtime from a script the site injects, rather than baked in at build time.
+ * That keeps a committed preview bundle free of any project values, and means
+ * the preview always points at whatever the site itself is configured with.
+ *
+ * On a real device this is undefined and the values come from app.config.ts.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __CRE_CONFIG__: Partial<Record<ConfigKey, string>> | undefined;
+}
+
+function requiredExtra(key: ConfigKey): string {
+  const injected = globalThis.__CRE_CONFIG__?.[key];
+  if (injected) return injected;
+
   const value = (Constants.expoConfig?.extra as Record<string, string> | undefined)?.[key];
   if (!value) {
     throw new Error(
