@@ -1,0 +1,24 @@
+{
+  "name": "CRE Property Tour",
+  "short_name": "Property Tour",
+  "description": "Run a property tour and collect client feedback in one place.",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#14304f",
+  "icons": [
+    {
+      "src": "/app/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/app/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

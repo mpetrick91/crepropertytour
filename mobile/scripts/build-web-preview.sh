@@ -24,27 +24,9 @@ rm -rf "$BUILD"
 CI=1 EXPO_NO_TELEMETRY=1 EXPO_WEB_BASE_URL=/app \
   npx expo export --platform web --output-dir "$BUILD" >/dev/null
 
-# The Supabase client is constructed while the bundle evaluates, so its config
-# has to be in place before the bundle runs.
-python3 - "$BUILD/index.html" <<'PY'
-import re, sys, pathlib
-
-page = pathlib.Path(sys.argv[1])
-html = page.read_text()
-
-if '/app-config.js' not in html:
-    html, count = re.subn(
-        r'(<script[^>]*src="/app/_expo/)',
-        r'<script src="/app-config.js"></script>\1',
-        html,
-        count=1,
-    )
-    if count != 1:
-        raise SystemExit('could not find the bundle script tag to inject before')
-
-page.write_text(html)
-print('injected /app-config.js ahead of the bundle')
-PY
+# Inject the runtime config script, and the manifest and Apple meta tags that
+# let this install to an iPhone home screen as a standalone app.
+python3 "$MOBILE/scripts/pwa-shell.py" "$BUILD" "$MOBILE/assets/images/icon.png"
 
 rm -rf "$TARGET"
 mkdir -p "$TARGET"
