@@ -16,7 +16,7 @@ export default async function HomePage() {
         </p>
         <Link
           href="/login"
-          className="mt-8 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white dark:text-[#0c0f13]"
+          className="mt-8 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white dark:text-[#070B14]"
         >
           Broker sign-in
         </Link>

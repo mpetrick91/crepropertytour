@@ -186,7 +186,7 @@ export default function TourDetailScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={t.accent} />
+        <ActivityIndicator color={t.primary} />
       </View>
     );
   }
@@ -315,7 +315,7 @@ export default function TourDetailScreen() {
                 </Body>
                 <Muted>{cityState(property.city, property.state)}</Muted>
               </View>
-              <Body style={{ color: t.accent, fontWeight: '700', fontSize: 22 }}>+</Body>
+              <Body style={{ color: t.primary, fontWeight: '700', fontSize: 22 }}>+</Body>
             </Card>
           </Pressable>
         ))

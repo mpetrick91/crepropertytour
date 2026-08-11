@@ -11,7 +11,7 @@ export const label = 'block text-sm font-medium';
 export const hint = 'mt-1 text-xs text-muted-foreground';
 
 export const buttonPrimary =
-  'inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60 dark:text-[#0c0f13]';
+  'inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60 dark:text-[#070B14]';
 
 export const buttonSecondary =
   'inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground disabled:opacity-60';

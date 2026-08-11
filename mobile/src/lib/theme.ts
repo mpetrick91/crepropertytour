@@ -3,92 +3,99 @@ import { useColorScheme } from 'react-native';
 /**
  * ─── BRAND ───────────────────────────────────────────────────────────────
  *
- * Everything visual comes from this file. Swapping in Cresa's exact palette
- * means changing the six values in BRAND below and nothing else -- no screen
- * hard-codes a colour.
+ * Cresa: a deep navy wordmark with an amber dot-matrix mark. Everything
+ * visual in the app resolves from these values -- no screen hard-codes a
+ * colour, so correcting a value here corrects it everywhere.
  *
- * These are a considered placeholder, not verified Cresa values: a deep
- * ink-navy carries the professional weight a client-facing tool needs, with a
- * warm amber reserved for broker-only content so it is impossible to confuse
- * with anything a client sees.
+ * Read off the logo rather than a brand specification, so nudge them if the
+ * official guide differs.
  */
 const BRAND = {
-  /** Primary. Buttons, active tabs, headers. */
-  primary: '#0F2E4C',
-  /** Lighter step of the primary, for gradients and dark-mode surfaces. */
-  primaryLift: '#1D4F7C',
-  /** Used sparingly for delight: progress, celebration, active states. */
-  accent: '#00A6A6',
-  /** Broker-only content. Deliberately unlike anything else in the app. */
-  internal: '#B4690E',
-  /** Ratings and highlights. */
-  gold: '#E0A32E',
-  /** Destructive. */
+  /** Cresa navy. Buttons, headers, active tabs. */
+  primary: '#0A2158',
+  /** A lighter step of the navy, for gradient depth and dark-mode surfaces. */
+  primaryLift: '#1A3C82',
+  /** Cresa amber. The energy in the brand -- used sparingly, so it lands. */
+  accent: '#FAA61A',
+  /** Ratings. The same amber, since it is already the brand's highlight. */
+  gold: '#FAA61A',
+  /** Destructive. Kept clearly outside the brand pair so it reads as a stop. */
   danger: '#C4362C',
 };
 
 const light = {
-  // Grounds — a faint blue cast rather than neutral grey, so white cards lift.
-  canvas: '#F2F5F8',
+  // Grounds — a faint navy cast rather than neutral grey, so white cards lift
+  // and the whole app sits in the same family as the wordmark.
+  canvas: '#F1F4F9',
   surface: '#FFFFFF',
-  surfaceSunken: '#E9EEF3',
+  surfaceSunken: '#E8EDF4',
   surfaceRaised: '#FFFFFF',
 
-  text: '#0C1620',
-  textMuted: '#5A6875',
-  textFaint: '#8B98A6',
-  border: '#DDE4EB',
-  borderStrong: '#C6D0DA',
+  text: '#0A1424',
+  textMuted: '#556173',
+  textFaint: '#8A94A5',
+  border: '#DCE3ED',
+  borderStrong: '#C3CDDC',
 
   primary: BRAND.primary,
   primaryLift: BRAND.primaryLift,
   onPrimary: '#FFFFFF',
-  primarySoft: '#E4EDF6',
+  primarySoft: '#E5EBF6',
 
+  // Amber is a fill, never body text: #FAA61A on white is about 2:1, which is
+  // unreadable. `accentInk` is the darkened amber used for text sitting on
+  // `accentSoft`, and `onAccent` is what goes on top of a solid amber fill.
   accent: BRAND.accent,
-  accentSoft: '#DDF4F4',
-  onAccent: '#00312F',
+  accentSoft: '#FFF2DC',
+  accentInk: '#8A5804',
+  onAccent: BRAND.primary,
 
-  internal: BRAND.internal,
-  internalSoft: '#FDF3E3',
-  internalBorder: '#EBD2A4',
+  // Broker-only content. Amber now belongs to the brand, so "private" is shown
+  // by recessing it -- a sunken slate surface, below the page rather than
+  // shouting from it -- plus a lock. Distinct by treatment, not by hue.
+  internal: '#46566B',
+  internalSoft: '#E7ECF3',
+  internalBorder: '#B9C6D6',
 
   gold: BRAND.gold,
   danger: BRAND.danger,
-  dangerSoft: '#FCEBE9',
+  dangerSoft: '#FBEAE8',
 
   success: '#0E7B5B',
   successSoft: '#DFF3EC',
 
-  scrim: 'rgba(12, 22, 32, 0.45)',
+  scrim: 'rgba(10, 20, 36, 0.45)',
 };
 
 const dark: typeof light = {
-  canvas: '#080C11',
-  surface: '#131A22',
-  surfaceSunken: '#0D1319',
-  surfaceRaised: '#1A222C',
+  canvas: '#070B14',
+  surface: '#111A2B',
+  surfaceSunken: '#0C1422',
+  surfaceRaised: '#172236',
 
-  text: '#EAF0F6',
-  textMuted: '#9BAAB9',
-  textFaint: '#6B7A8A',
-  border: '#25303C',
-  borderStrong: '#33414F',
+  text: '#E9EEF7',
+  textMuted: '#98A6BC',
+  textFaint: '#6A7891',
+  border: '#233047',
+  borderStrong: '#31405A',
 
-  primary: '#7FB6E8',
-  primaryLift: '#A8CDF0',
-  onPrimary: '#06121D',
-  primarySoft: '#152538',
+  // The brand navy is too dark to read against a dark ground, so the primary
+  // lifts to a tint of itself while staying recognisably the same hue.
+  primary: '#7FA0E0',
+  primaryLift: '#A6BEEC',
+  onPrimary: '#060D1C',
+  primarySoft: '#16233C',
 
-  accent: '#3FD0CE',
-  accentSoft: '#0D2B2B',
-  onAccent: '#00201F',
+  accent: BRAND.accent,
+  accentSoft: '#2B1F09',
+  accentInk: '#F5B84B',
+  onAccent: '#1A1200',
 
-  internal: '#E5A85C',
-  internalSoft: '#2A1D0D',
-  internalBorder: '#4C381C',
+  internal: '#93A3BA',
+  internalSoft: '#141D2D',
+  internalBorder: '#2D3B52',
 
-  gold: '#EFBB56',
+  gold: BRAND.gold,
   danger: '#F0938A',
   dangerSoft: '#2C1512',
 
@@ -180,7 +187,7 @@ export const TAP = 48;
 export function statusStyle(status: string, t: Palette) {
   switch (status) {
     case 'in_progress':
-      return { bg: t.accentSoft, fg: t.accent, label: 'Touring now' };
+      return { bg: t.accentSoft, fg: t.accentInk, label: 'Touring now' };
     case 'scheduled':
       return { bg: t.primarySoft, fg: t.primary, label: 'Scheduled' };
     case 'completed':

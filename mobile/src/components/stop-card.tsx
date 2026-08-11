@@ -244,8 +244,8 @@ export function StopCard({
                 scaleTo={0.98}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
               >
-                <Ionicons name="navigate-circle" size={16} color={t.accent} />
-                <Muted style={{ color: t.accent, flex: 1 }}>{address}</Muted>
+                <Ionicons name="navigate-circle" size={16} color={t.primary} />
+                <Muted style={{ color: t.primary, flex: 1 }}>{address}</Muted>
               </Touchable>
             ) : null}
           </View>

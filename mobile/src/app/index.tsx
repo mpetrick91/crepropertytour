@@ -18,7 +18,7 @@ export default function IndexScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={t.accent} />
+        <ActivityIndicator color={t.primary} />
       </View>
     );
   }

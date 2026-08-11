@@ -43,7 +43,7 @@ head_additions = """
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Property Tour" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#14304f" />
+    <meta name="theme-color" content="#0A2158" />
     <link rel="apple-touch-icon" href="/app/icon.png" />
 """
 
@@ -68,8 +68,8 @@ manifest = {
     "scope": "/app/",
     "display": "standalone",
     "orientation": "portrait",
-    "background_color": "#ffffff",
-    "theme_color": "#14304f",
+    "background_color": "#0A2158",
+    "theme_color": "#0A2158",
     "icons": [
         {"src": "/app/icon.png", "sizes": "1024x1024", "type": "image/png"},
         {

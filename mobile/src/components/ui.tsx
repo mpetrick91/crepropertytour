@@ -282,8 +282,13 @@ export function CardButton({
 }
 
 /**
- * Broker-only content. Loud on purpose: the entire privacy model rests on this
- * text never reaching a client, so it must be unmistakable at a glance.
+ * Broker-only content.
+ *
+ * Amber belongs to the brand now, so "private" cannot be signalled with colour
+ * without competing with it. Instead this is recessed: a sunken slate panel
+ * with a dashed edge and a lock, reading as something sitting *behind* the
+ * page rather than on it. Distinct by treatment, which survives a palette
+ * change in a way a hue would not.
  */
 export function InternalNote({ children }: { children: React.ReactNode }) {
   const t = useTheme();
@@ -294,13 +299,14 @@ export function InternalNote({ children }: { children: React.ReactNode }) {
         borderRadius: radius.md,
         padding: space.md,
         gap: space.xs,
-        borderLeftWidth: 3,
-        borderLeftColor: t.internal,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: t.internalBorder,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-        <Ionicons name="eye-off" size={12} color={t.internal} />
-        <Text style={[typeScale.label, { color: t.internal }]}>Only you can see this</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        <Ionicons name="lock-closed" size={11} color={t.internal} />
+        <Text style={[typeScale.label, { color: t.internal }]}>Private to you</Text>
       </View>
       <Text style={[typeScale.small, { color: t.text }]}>{children}</Text>
     </View>
