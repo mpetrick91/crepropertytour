@@ -3,9 +3,11 @@ import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 
+import { ActivityIndicator } from 'react-native';
+
 import { Body, Button, ErrorText, Field, Muted, Title } from '@/components/ui';
 import { humanError } from '@/lib/format';
-import { useSession } from '@/lib/session';
+import { hasDevAutoSignIn, useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import { space, useTheme } from '@/lib/theme';
 
@@ -23,7 +25,7 @@ import { space, useTheme } from '@/lib/theme';
 type Mode = 'password' | 'email-sent';
 
 export default function LoginScreen() {
-  const { isBroker } = useSession();
+  const { isBroker, loading: sessionLoading, autoSignInError } = useSession();
   const t = useTheme();
 
   const [mode, setMode] = useState<Mode>('password');
@@ -34,6 +36,17 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   if (isBroker) return <Redirect href="/tours" />;
+
+  // .env is set up to sign in for us, and it has not failed yet -- so show
+  // that rather than a form the developer is about to be taken away from.
+  if (hasDevAutoSignIn() && sessionLoading && !autoSignInError) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg }}>
+        <ActivityIndicator color={t.primary} />
+        <Muted>Signing you in…</Muted>
+      </View>
+    );
+  }
 
   function describe(message: string): string {
     if (/invalid login credentials/i.test(message)) {
@@ -124,6 +137,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Title>Broker sign-in</Title>
+
+        {autoSignInError ? <ErrorText>{autoSignInError}</ErrorText> : null}
         <Body style={{ color: t.textMuted }}>
           Clients don&apos;t need an account — they just open the tour link you send them.
         </Body>

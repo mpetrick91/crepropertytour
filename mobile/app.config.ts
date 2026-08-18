@@ -22,6 +22,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     siteUrl: process.env.EXPO_PUBLIC_SITE_URL ?? 'https://crepropertytour.vercel.app',
+    // Development only -- see devCredentials() in src/lib/session.tsx. Unset
+    // in .env and these are undefined, which turns the behaviour off.
+    devEmail: process.env.EXPO_PUBLIC_DEV_EMAIL,
+    devPassword: process.env.EXPO_PUBLIC_DEV_PASSWORD,
     eas: config.extra?.eas,
   },
 });
