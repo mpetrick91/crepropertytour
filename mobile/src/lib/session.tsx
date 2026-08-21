@@ -2,6 +2,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+import { signInAsDevBroker } from './dev-account';
+import { seedDevWorkspaceOnce } from './dev-seed';
 import { supabase } from './supabase';
 
 type SessionState = {
@@ -24,20 +26,17 @@ const SessionContext = createContext<SessionState>({
 });
 
 /**
- * Development convenience: sign in automatically from credentials in .env, so
- * reloading the app while building it does not mean retyping a password.
+ * Optional development credentials from .env. Set them and the app signs in as
+ * that specific broker -- which is what you want once there is real data in the
+ * account you care about. Leave them out and the app provisions a throwaway
+ * broker for itself instead (see dev-account.ts), so nobody has to type
+ * anything at all.
  *
- * Deliberately not a way of removing authentication. The app still signs in as
- * a real broker, so every row-level security rule applies exactly as it will in
- * production -- which means what you see while developing is what a signed-in
- * broker will see, not a privileged view that hides bugs.
+ * Either way the app is signed in as a real broker and every row-level security
+ * rule applies exactly as it will in production. What you see while developing
+ * is what a signed-in broker sees, not a privileged view that hides bugs.
  *
- * Two guards keep it out of a shipped app:
- *   - __DEV__ is false in any release build, so this never runs there.
- *   - the values live in mobile/.env, which is gitignored and is not what EAS
- *     builds read.
- *
- * To turn it off, delete the two lines from .env. Nothing else changes.
+ * __DEV__ is false in any release build, so none of this ships.
  */
 function devCredentials(): { email: string; password: string } | null {
   if (!__DEV__) return null;
@@ -55,6 +54,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [autoSignInError, setAutoSignInError] = useState<string | null>(null);
   // One attempt only: a wrong password would otherwise retry forever.
   const attempted = useRef(false);
+  // Holds the app on its spinner while a new development workspace is filled
+  // in, so the tour list opens populated instead of blank-then-populated.
+  const seeding = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -71,32 +73,60 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (!__DEV__ || attempted.current) {
+        setLoading(false);
+        return;
+      }
+      attempted.current = true;
+
       const credentials = devCredentials();
-      if (!credentials || attempted.current) {
+
+      if (credentials) {
+        console.log(`[dev] signing in automatically as ${credentials.email}`);
+        const { error } = await supabase.auth.signInWithPassword(credentials);
+        if (!active) return;
+
+        if (!error) return; // The auth listener takes it from here.
+
+        // Named credentials that do not work are a mistake worth surfacing --
+        // silently falling through to a throwaway account would leave someone
+        // staring at the wrong workspace wondering where their tours went.
+        setAutoSignInError(
+          `Could not sign in as ${credentials.email}: ${error.message}. Fix ` +
+            'EXPO_PUBLIC_DEV_EMAIL and EXPO_PUBLIC_DEV_PASSWORD in mobile/.env, or ' +
+            'delete those two lines to let the app make its own account.',
+        );
         setLoading(false);
         return;
       }
 
-      attempted.current = true;
-      console.log(`[dev] signing in automatically as ${credentials.email}`);
+      console.log('[dev] no credentials in .env — using a throwaway broker account');
+      seeding.current = true;
+      const result = await signInAsDevBroker();
 
-      const { error } = await supabase.auth.signInWithPassword(credentials);
-      if (!active) return;
-
-      if (error) {
-        setAutoSignInError(
-          `Automatic sign-in failed: ${error.message}. Check EXPO_PUBLIC_DEV_EMAIL and EXPO_PUBLIC_DEV_PASSWORD in mobile/.env, or sign in by hand below.`,
-        );
+      if (!result.ok) {
+        seeding.current = false;
+        if (!active) return;
+        setAutoSignInError(result.message);
         setLoading(false);
+        return;
       }
-      // On success the auth listener below sets the session and clears loading.
+
+      const { data: signedIn } = await supabase.auth.getUser();
+      if (signedIn.user) await seedDevWorkspaceOnce(signedIn.user.id);
+
+      seeding.current = false;
+      if (!active) return;
+      setLoading(false);
     }
 
     bootstrap();
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      setLoading(false);
+      // Not while a new workspace is still being written -- bootstrap() clears
+      // it once there is something to show.
+      if (!seeding.current) setLoading(false);
     });
 
     return () => {
@@ -123,7 +153,12 @@ export function useSession(): SessionState {
   return useContext(SessionContext);
 }
 
-/** True when .env is set up to sign in for you. Used to explain the wait. */
+/**
+ * True when the app signs itself in rather than asking. Always the case in
+ * development -- with .env credentials if they are set, and with a throwaway
+ * account if they are not. Used to explain the wait instead of flashing a
+ * sign-in form nobody is expected to fill in.
+ */
 export function hasDevAutoSignIn(): boolean {
-  return devCredentials() !== null;
+  return __DEV__;
 }

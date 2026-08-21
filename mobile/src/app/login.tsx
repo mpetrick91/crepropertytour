@@ -37,13 +37,14 @@ export default function LoginScreen() {
 
   if (isBroker) return <Redirect href="/tours" />;
 
-  // .env is set up to sign in for us, and it has not failed yet -- so show
-  // that rather than a form the developer is about to be taken away from.
+  // The app signs itself in during development, and it has not failed yet --
+  // so show that rather than a form the developer is about to be taken away
+  // from. The first launch also writes a sample workspace, hence the wording.
   if (hasDevAutoSignIn() && sessionLoading && !autoSignInError) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg }}>
         <ActivityIndicator color={t.primary} />
-        <Muted>Signing you in…</Muted>
+        <Muted>Setting up your workspace…</Muted>
       </View>
     );
   }
