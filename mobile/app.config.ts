@@ -22,6 +22,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     siteUrl: process.env.EXPO_PUBLIC_SITE_URL ?? 'https://crepropertytour.vercel.app',
+    // Set to 'off' to run against the real Supabase project and its sign-in.
+    // Anything else (including unset) means demo mode in development.
+    demoMode: process.env.EXPO_PUBLIC_DEMO_MODE,
     // Development only -- see devCredentials() in src/lib/session.tsx. Unset
     // in .env and these are undefined, which turns the behaviour off.
     devEmail: process.env.EXPO_PUBLIC_DEV_EMAIL,
