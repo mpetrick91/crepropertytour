@@ -33,11 +33,29 @@ function randomHex(byteCount: number): string {
 }
 
 /**
- * example.com is the address range IANA reserves for exactly this -- it is
- * accepted by every email validator and can never reach a real inbox.
+ * Supabase rejects addresses at the IANA example domains outright, so the
+ * obvious choice of example.com is not available. These are tried in order
+ * until one is accepted; nothing is ever sent to them.
  */
-function newAccount(): StoredAccount {
-  return { email: `dev-${randomHex(6)}@example.com`, password: randomHex(16) };
+const DOMAINS = ['crepropertytour.app', 'crepropertytour.dev'];
+
+function newAccount(domain: string): StoredAccount {
+  return { email: `dev-${randomHex(6)}@${domain}`, password: randomHex(16) };
+}
+
+/**
+ * Turns an address into a tagged variant of itself: you@gmail.com becomes
+ * you+cre-dev-1a2b@gmail.com. Every mail provider routes those back to the
+ * same inbox, which makes it a real deliverable address at a domain no
+ * validator will argue with.
+ */
+function taggedAddress(base: string): StoredAccount {
+  const [local, domain] = base.trim().split('@');
+  const tag = randomHex(2);
+  return {
+    email: domain ? `${local.split('+')[0]}+cre-dev-${tag}@${domain}` : base.trim(),
+    password: randomHex(16),
+  };
 }
 
 async function readStored(): Promise<StoredAccount | null> {
@@ -72,6 +90,14 @@ function humanSignUpError(message: string): string {
   if (text.includes('rate limit') || text.includes('too many')) {
     return 'Supabase is rate limiting sign-ups. Wait a minute and reload the app.';
   }
+  if (text.includes('invalid')) {
+    return (
+      'Supabase rejected every address the app made up for itself, which means the ' +
+      'project checks that an email domain can really receive mail. Add one line to ' +
+      'mobile/.env — EXPO_PUBLIC_DEV_EMAIL=your@email.com — and the app will sign ' +
+      'itself up as a +tag on that address instead. You still never type a password.'
+    );
+  }
   if (text.includes('fetch') || text.includes('network')) {
     return 'Could not reach Supabase. Check the Wi-Fi on the phone and the Mac.';
   }
@@ -84,7 +110,7 @@ function humanSignUpError(message: string): string {
  * the app is pointed at a different project than last time -- is discarded and
  * replaced rather than reported, since there is nothing for anyone to fix.
  */
-export async function signInAsDevBroker(): Promise<DevSignInResult> {
+export async function signInAsDevBroker(baseEmail?: string): Promise<DevSignInResult> {
   const stored = await readStored();
 
   if (stored) {
@@ -93,14 +119,35 @@ export async function signInAsDevBroker(): Promise<DevSignInResult> {
     await AsyncStorage.removeItem(STORAGE_KEY);
   }
 
-  const account = newAccount();
-  const { data, error } = await supabase.auth.signUp({
-    email: account.email,
-    password: account.password,
-    options: { data: { full_name: 'Development Broker' } },
-  });
+  // A base address from .env is known-good, so it needs no alternatives.
+  const candidates = baseEmail
+    ? [taggedAddress(baseEmail)]
+    : DOMAINS.map((domain) => newAccount(domain));
 
-  if (error) return { ok: false, message: humanSignUpError(error.message) };
+  let account: StoredAccount | null = null;
+  let data: Awaited<ReturnType<typeof supabase.auth.signUp>>['data'] | null = null;
+  let lastError = '';
+
+  for (const candidate of candidates) {
+    const attempt = await supabase.auth.signUp({
+      email: candidate.email,
+      password: candidate.password,
+      options: { data: { full_name: 'Development Broker' } },
+    });
+
+    if (!attempt.error) {
+      account = candidate;
+      data = attempt.data;
+      break;
+    }
+
+    lastError = attempt.error.message;
+    // Anything other than the address itself being unacceptable will fail the
+    // same way at every domain, so stop rather than churn through them.
+    if (!/email address .*invalid|invalid.*email/i.test(lastError)) break;
+  }
+
+  if (!account || !data) return { ok: false, message: humanSignUpError(lastError) };
 
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(account));
 

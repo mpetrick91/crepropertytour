@@ -100,9 +100,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // An email on its own is not a sign-in, but it is a domain the project
+      // will certainly accept -- worth having when Supabase is fussy about the
+      // made-up ones. Still nothing to type: the password is generated.
+      const extra = Constants.expoConfig?.extra as Record<string, string | undefined> | undefined;
+      const baseEmail = extra?.devEmail?.trim() || undefined;
+
       console.log('[dev] no credentials in .env — using a throwaway broker account');
       seeding.current = true;
-      const result = await signInAsDevBroker();
+      const result = await signInAsDevBroker(baseEmail);
 
       if (!result.ok) {
         seeding.current = false;
