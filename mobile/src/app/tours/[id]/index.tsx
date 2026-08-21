@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BuildingMark } from '@/components/building-mark';
 import {
   Body,
   Button,
@@ -14,7 +15,6 @@ import {
   InternalNote,
   Muted,
   Label,
-  StopNumber,
   Title,
 } from '@/components/ui';
 import { cityState, formatRate, formatSf, formatTourDate, humanError } from '@/lib/format';
@@ -246,7 +246,12 @@ export default function TourDetailScreen() {
           return (
             <Card key={stop.id} style={{ gap: space.md }}>
               <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
-                <StopNumber n={index + 1} />
+                <BuildingMark
+                  name={property?.name}
+                  address={property?.address_line1 ?? label}
+                  size={46}
+                  badge={index + 1}
+                />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Heading>{label}</Heading>
                   <Muted>

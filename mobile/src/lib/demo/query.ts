@@ -139,12 +139,17 @@ export class DemoQuery<T = unknown> implements PromiseLike<DemoResult<T>> {
     return this.filters.every(([column, value]) => row[column] === value);
   }
 
-  private project(row: Row): Row {
-    if (this.columns.trim() === '*') return { ...row };
+  /**
+   * Recursive, so an embed can carry its own embeds -- a tour's stops each
+   * carrying their property, which is how a tour card shows its buildings in
+   * one query rather than one per stop.
+   */
+  private projectRow(table: string, row: Row, columns: string): Row {
+    if (columns.trim() === '*') return { ...row };
 
     const output: Row = {};
-    for (const part of splitColumns(this.columns)) {
-      const embedMatch = /^([a-z_]+)\s*\((.*)\)$/is.exec(part);
+    for (const part of splitColumns(columns)) {
+      const embedMatch = /^([a-z_]+)\s*\(([\s\S]*)\)$/.exec(part);
 
       if (!embedMatch) {
         output[part] = row[part];
@@ -152,7 +157,7 @@ export class DemoQuery<T = unknown> implements PromiseLike<DemoResult<T>> {
       }
 
       const [, name, inner] = embedMatch;
-      const embed = EMBEDS[this.table]?.[name];
+      const embed = EMBEDS[table]?.[name];
       if (!embed) {
         output[name] = null;
         continue;
@@ -169,15 +174,24 @@ export class DemoQuery<T = unknown> implements PromiseLike<DemoResult<T>> {
         continue;
       }
 
-      const pick = (candidate: Row) => {
-        const projected: Row = {};
-        for (const column of splitColumns(inner)) projected[column] = candidate[column];
-        return projected;
-      };
+      if (embed.type === 'one') {
+        output[name] = related[0] ? this.projectRow(embed.table, related[0], inner) : null;
+        continue;
+      }
 
-      output[name] = embed.type === 'one' ? (related[0] ? pick(related[0]) : null) : related.map(pick);
+      // A to-many embed keeps the child table's own ordering, which for an
+      // itinerary is the thing that matters.
+      const ordered = embed.table === 'tour_stops'
+        ? [...related].sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0))
+        : related;
+
+      output[name] = ordered.map((candidate) => this.projectRow(embed.table, candidate, inner));
     }
     return output;
+  }
+
+  private project(row: Row): Row {
+    return this.projectRow(this.table, row, this.columns);
   }
 
   private sort(rows: Row[]): Row[] {

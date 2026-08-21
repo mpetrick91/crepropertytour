@@ -198,3 +198,50 @@ export function statusStyle(status: string, t: Palette) {
       return { bg: t.surfaceSunken, fg: t.textMuted, label: 'Draft' };
   }
 }
+
+/**
+ * ─── BUILDING IDENTITY ────────────────────────────────────────────────────
+ *
+ * A list of addresses is a wall of text: every row the same shape, nothing to
+ * aim at. Giving each building a colour and a monogram makes the list
+ * scannable by memory -- you stop reading rows and start recognising them.
+ *
+ * The hues are brand-adjacent rather than arbitrary: each is a deep, desaturated
+ * tone that sits beside Cresa navy without competing with the amber, so a
+ * screenful of them still reads as one product. White text clears 4.5:1 on
+ * every one.
+ */
+export const MARK_GRADIENTS: [string, string][] = [
+  ['#0A2158', '#26468F'], // navy
+  ['#0E4C4A', '#1B7A72'], // deep teal
+  ['#4A2352', '#7A3C82'], // plum
+  ['#7A3B10', '#B4681C'], // clay, the amber's darker cousin
+  ['#123B2C', '#257050'], // forest
+  ['#2A2F6B', '#4A52A8'], // indigo
+  ['#5C2231', '#93384E'], // wine
+  ['#1F3A56', '#39668F'], // slate blue
+];
+
+/**
+ * Always the same colour for the same building, with no colour stored on the
+ * row. A plain sum of character codes is enough to scatter them: the point is
+ * stable variety, not cryptographic spread.
+ */
+export function markGradient(seed: string): [string, string] {
+  let total = 0;
+  for (let index = 0; index < seed.length; index += 1) total += seed.charCodeAt(index);
+  return MARK_GRADIENTS[total % MARK_GRADIENTS.length];
+}
+
+/**
+ * Up to two letters for the monogram. Prefers the building's name, falls back
+ * to the street address, and skips the house number -- "4820 Gateway" is
+ * "GA", not "48", because the number is the least memorable part.
+ */
+export function markInitials(name: string | null | undefined, address: string): string {
+  const source = (name?.trim() || address.trim()).replace(/^[\d\s-]+/, '');
+  const words = source.split(/\s+/).filter(Boolean);
+  if (!words.length) return '••';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}

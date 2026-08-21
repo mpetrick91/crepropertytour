@@ -15,6 +15,7 @@ import {
   type ViewProps,
 } from 'react-native';
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -534,6 +535,226 @@ export function Stars({
           </Touchable>
         );
       })}
+    </View>
+  );
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+/**
+ * Fades a list item up as it arrives, each one slightly after the last.
+ *
+ * A list that simply exists when a screen opens is the single clearest tell
+ * that something is a web page. Staggering the arrival costs nothing and makes
+ * the same list feel assembled rather than dumped.
+ */
+export function Appear({
+  index = 0,
+  children,
+  style,
+}: {
+  index?: number;
+  children: React.ReactNode;
+  style?: ViewProps['style'];
+}) {
+  return (
+    <Animated.View
+      // Capped so the twentieth card is not still animating in a second later.
+      entering={FadeInDown.delay(Math.min(index, 8) * 55)
+        .duration(320)
+        .springify()
+        .damping(18)}
+      style={style}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/* ── Segmented control ─────────────────────────────────────────────────── */
+
+/**
+ * Two or three exclusive choices, with the selection sliding between them
+ * rather than blinking. Cheaper to read than a row of buttons because there is
+ * only ever one filled shape on screen.
+ */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string; count?: number }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  const t = useTheme();
+  const index = Math.max(0, options.findIndex((option) => option.value === value));
+  const offset = useSharedValue(index);
+
+  offset.value = withSpring(index, { damping: 20, stiffness: 220 });
+
+  const thumb = useAnimatedStyle(() => ({
+    left: `${(offset.value * 100) / options.length}%`,
+    width: `${100 / options.length}%`,
+  }));
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: t.surfaceSunken,
+        borderRadius: radius.pill,
+        padding: 4,
+      }}
+    >
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 4,
+            bottom: 4,
+            marginLeft: 4,
+            paddingRight: 8,
+          },
+          thumb,
+        ]}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: t.surface,
+            borderRadius: radius.pill,
+            ...elevation(1, false),
+          }}
+        />
+      </Animated.View>
+
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => {
+              if (!selected) tap('light');
+              onChange(option.value);
+            }}
+            style={{
+              flex: 1,
+              minHeight: 38,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: 6,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '700',
+                color: selected ? t.text : t.textMuted,
+              }}
+            >
+              {option.label}
+            </Text>
+            {option.count !== undefined ? (
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: selected ? t.primary : t.textFaint,
+                }}
+              >
+                {option.count}
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ── Stats ─────────────────────────────────────────────────────────────── */
+
+/**
+ * A number with its unit under it. Reads as a fact at a glance, where the same
+ * thing written as "3 stops · 2 notes" has to be parsed word by word.
+ */
+export function Stat({
+  value,
+  label,
+  icon,
+  tone = 'default',
+}: {
+  value: string | number;
+  label: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  tone?: 'default' | 'accent' | 'success';
+}) {
+  const t = useTheme();
+  const color = tone === 'accent' ? t.accentInk : tone === 'success' ? t.success : t.text;
+
+  return (
+    <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        {icon ? <Ionicons name={icon} size={13} color={color} /> : null}
+        <Text style={{ fontSize: 19, fontWeight: '800', color, letterSpacing: -0.4 }}>
+          {value}
+        </Text>
+      </View>
+      <Text style={[typeScale.label, { color: t.textFaint }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** The row those sit in, divided so each number owns its column. */
+export function StatRow({ children }: { children: React.ReactNode }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        gap: space.lg,
+        paddingTop: space.md,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: t.border,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+/* ── Section heading ───────────────────────────────────────────────────── */
+
+/** A label with an optional action on the right. Gives a screen its joints. */
+export function SectionHeader({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: -space.sm,
+      }}
+    >
+      <Text style={[typeScale.label, { color: t.textFaint }]}>{title}</Text>
+      {action ? (
+        <Touchable onPress={() => onAction?.()} scaleTo={0.94} style={{ padding: space.xs }}>
+          <Text style={{ fontSize: 13.5, fontWeight: '700', color: t.primary }}>{action}</Text>
+        </Touchable>
+      ) : null}
     </View>
   );
 }

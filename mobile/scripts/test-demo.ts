@@ -61,6 +61,20 @@ const check = (label: string, ok: boolean, detail?: unknown) => {
   check('tour list populated', tours.data.length === 1 && tours.data[0].clients.name === 'Ridgeline Logistics');
   const tourId = tours.data[0].id;
 
+  console.log('nested embeds — the tour card shows its buildings in one query');
+  const withBuildings = await db.from('tours').select(
+    'id, title, tour_stops(id, position, properties(name, address_line1)), stop_notes(count)',
+  );
+  const withStops = withBuildings.data[0];
+  check('stops come back in itinerary order',
+    withStops.tour_stops.map((s: any) => s.position).join(',') === '0,1,2',
+    withStops.tour_stops.map((s: any) => s.position));
+  check('each stop carries its property', withStops.tour_stops[0].properties.name.startsWith('Gateway'));
+  check('the nested embed projects only what was asked',
+    Object.keys(withStops.tour_stops[0].properties).join(',') === 'name,address_line1',
+    Object.keys(withStops.tour_stops[0].properties));
+  check('a count alongside a nested embed still works', withStops.stop_notes[0].count === 2);
+
   console.log('rpc');
   const pos = await db.rpc('next_stop_position', { p_tour_id: tourId });
   check('next position after 3 stops is 3', pos.data === 3, pos);

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
+import { DateField } from '@/components/date-picker';
 import { Button, ErrorText, Field, Muted, Title } from '@/components/ui';
 import { humanError } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -114,15 +115,7 @@ export default function NewTourScreen() {
 
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
-            <Field
-              label="Date"
-              value={tourDate}
-              onChangeText={setTourDate}
-              placeholder="2026-08-14"
-              autoCapitalize="none"
-              autoCorrect={false}
-              hint="YYYY-MM-DD"
-            />
+            <DateField label="Date" value={tourDate} onChange={setTourDate} />
           </View>
           <View style={{ flex: 1 }}>
             <Field
