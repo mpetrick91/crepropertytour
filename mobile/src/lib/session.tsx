@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 
 import { signInAsDevBroker } from './dev-account';
 import { seedDevWorkspaceOnce } from './dev-seed';
-import { supabase } from './supabase';
+import { demoReady, supabase } from './supabase';
 
 type SessionState = {
   session: Session | null;
@@ -62,6 +62,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     let active = true;
 
     async function bootstrap() {
+      // Demo mode keeps its database on the device; wait for the previous
+      // session's edits before any screen reads from it.
+      await demoReady;
+
       // Sessions persist in AsyncStorage, so a guest who joined a tour last
       // week is still on it when they reopen the app -- no second sign-in.
       const { data } = await supabase.auth.getSession();

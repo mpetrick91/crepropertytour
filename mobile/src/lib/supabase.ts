@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import 'react-native-url-polyfill/auto';
 
+import { createDemoClient, type DemoClient } from './demo/client';
 import type { Database } from './database.types';
 
 /**
@@ -49,15 +50,64 @@ function projectOrigin(): string {
   }
 }
 
-export const siteUrl = () => requiredExtra('siteUrl').replace(/\/+$/, '');
+/**
+ * Demo mode: run the app against a database on the device instead of Supabase.
+ *
+ * On by default in development, because the alternative is a sign-in screen --
+ * there is no third option. Row-level security answers "what may this request
+ * read?" with "it depends who is signed in", so an app with no session is not
+ * an app with everything unlocked, it is an app that can see nothing. Demo mode
+ * sidesteps that by not having a server in the conversation at all.
+ *
+ * Nothing is bypassed, because there is nothing on the other end to bypass. The
+ * screens, the forms and the navigation are the real ones; only the data is
+ * local. Turn it off with EXPO_PUBLIC_DEMO_MODE=off in mobile/.env and the real
+ * client, the real rules and the real sign-in come back untouched.
+ *
+ * Never on in a release build regardless of what .env says.
+ */
+export const isDemoMode = (() => {
+  if (!__DEV__) return false;
+  const flag = (Constants.expoConfig?.extra as Record<string, string | undefined>)?.demoMode;
+  return flag?.toLowerCase() !== 'off' && flag?.toLowerCase() !== 'false';
+})();
 
-export const supabase = createClient<Database>(projectOrigin(), requiredExtra('supabaseAnonKey'), {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    // A native app has no URL bar to read a magic-link fragment out of; the
-    // deep-link handler in app/_layout.tsx feeds the session in explicitly.
-    detectSessionInUrl: false,
-  },
-});
+export const siteUrl = () =>
+  isDemoMode
+    ? 'https://crepropertytour.vercel.app'
+    : requiredExtra('siteUrl').replace(/\/+$/, '');
+
+/**
+ * Built lazily so that demo mode needs no configuration at all -- reading
+ * supabaseUrl would throw before the app could render, which is the failure
+ * demo mode exists to avoid.
+ */
+function realClient() {
+  return createClient<Database>(projectOrigin(), requiredExtra('supabaseAnonKey'), {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      // A native app has no URL bar to read a magic-link fragment out of; the
+      // deep-link handler in app/_layout.tsx feeds the session in explicitly.
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+export const supabase = (
+  isDemoMode ? createDemoClient() : realClient()
+) as unknown as SupabaseClient<Database>;
+
+/**
+ * Resolves once any previously saved demo data has been read back off disk.
+ * Awaited before the first screen loads so edits made last time are present
+ * rather than appearing a moment later.
+ */
+export const demoReady: Promise<void> = isDemoMode
+  ? (supabase as unknown as DemoClient).restore()
+  : Promise.resolve();
+
+if (isDemoMode) {
+  console.log('[demo] running on a local database — no sign-in, no Supabase');
+}
