@@ -13,7 +13,7 @@ import { headerGradient, radius, space, useTheme } from '@/lib/theme';
  * header. Quiet enough to be texture rather than decoration, and the one place
  * the brand's own geometry shows up in the product.
  */
-function DotMatrix() {
+function DotMatrix({ inset = 0 }: { inset?: number }) {
   const pattern = [
     [1, 0, 1, 1],
     [1, 0, 1, 0],
@@ -26,7 +26,7 @@ function DotMatrix() {
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ position: 'absolute', top: 0, right: space.lg, opacity: 0.5 }}
+      style={{ position: 'absolute', top: 0, right: space.lg + inset, opacity: 0.45 }}
     >
       {pattern.map((row, y) => (
         <View key={y} style={{ flexDirection: 'row' }}>
@@ -87,7 +87,9 @@ export function ScreenHeader({
           overflow: 'hidden',
         }}
       >
-        <DotMatrix />
+        {/* Shifted clear of the action button when there is one, so the
+            brand texture never sits underneath a control. */}
+        <DotMatrix inset={right ? 56 : 0} />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
           {back ? (

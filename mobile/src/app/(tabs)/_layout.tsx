@@ -3,7 +3,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { ActivityIndicator, Platform, View } from 'react-native';
 
 import { useSession } from '@/lib/session';
-import { radius, useTheme } from '@/lib/theme';
+import { radius, space, useTheme } from '@/lib/theme';
 
 /**
  * A bottom tab bar is most of what makes this read as an app rather than a
@@ -37,25 +37,28 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: t.primary,
         tabBarInactiveTintColor: t.textFaint,
+        // A bar that floats clear of the edges, rather than a strip welded to
+        // the bottom of the screen. The content scrolling visibly underneath
+        // it is most of what separates "an app" from "a page with links".
         tabBarStyle: {
-          backgroundColor: t.surface,
-          borderTopColor: t.border,
-          borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingTop: 8,
-          // Lifts the bar off the canvas so the list scrolls *under* something,
-          // rather than ending at a flat line.
-          shadowColor: '#000',
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: -4 },
-          elevation: 12,
-          borderTopLeftRadius: radius.lg,
-          borderTopRightRadius: radius.lg,
           position: 'absolute',
+          left: space.lg,
+          right: space.lg,
+          bottom: Platform.OS === 'ios' ? 28 : space.lg,
+          height: 78,
+          paddingTop: 9,
+          paddingBottom: 11,
+          backgroundColor: t.surface,
+          borderTopWidth: 0,
+          borderRadius: radius.pill,
+          shadowColor: '#000',
+          shadowOpacity: 0.14,
+          shadowRadius: 22,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 16,
         },
-        tabBarLabelStyle: { fontSize: 11.5, fontWeight: '700', marginTop: 2 },
-        tabBarItemStyle: { paddingVertical: 4 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 1 },
+        tabBarItemStyle: { paddingVertical: 4, borderRadius: radius.pill },
       }}
     >
       <Tabs.Screen
@@ -63,7 +66,7 @@ export default function TabsLayout() {
         options={{
           title: 'Tours',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color} />
+            <TabIcon name="map" focused={focused} color={color} />
           ),
         }}
       />
@@ -72,10 +75,39 @@ export default function TabsLayout() {
         options={{
           title: 'Buildings',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'business' : 'business-outline'} size={24} color={color} />
+            <TabIcon name="business" focused={focused} color={color} />
           ),
         }}
       />
     </Tabs>
+  );
+}
+
+/**
+ * The selected tab gets a filled capsule behind it, so which one is active is
+ * legible from the shape alone rather than from a tint difference that a bright
+ * sidewalk washes out.
+ */
+function TabIcon({
+  name,
+  focused,
+  color,
+}: {
+  name: 'map' | 'business';
+  focused: boolean;
+  color: string;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        paddingHorizontal: space.lg,
+        paddingVertical: 3,
+        borderRadius: radius.pill,
+        backgroundColor: focused ? t.primarySoft : 'transparent',
+      }}
+    >
+      <Ionicons name={focused ? name : `${name}-outline`} size={22} color={color} />
+    </View>
   );
 }
