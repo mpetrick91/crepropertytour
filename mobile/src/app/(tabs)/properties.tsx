@@ -3,7 +3,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, Text, TextInput, View } from 'react-native';
 
-import { BuildingMark } from '@/components/building-mark';
 import { ScreenBody, ScreenHeader } from '@/components/screen';
 import {
   Appear,
@@ -168,12 +167,6 @@ export default function PropertiesScreen() {
                     <CardButton onPress={() => router.push(`/properties/${property.id}`)}>
                       <View style={{ gap: space.md }}>
                         <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
-                          <BuildingMark
-                            name={property.name}
-                            address={property.address_line1}
-                            size={52}
-                          />
-
                           <View style={{ flex: 1, gap: 2 }}>
                             <BodyStrong numberOfLines={1}>
                               {property.name ?? property.address_line1}

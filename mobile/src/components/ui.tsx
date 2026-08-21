@@ -84,7 +84,10 @@ export function Touchable({
 
   const animated = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+    // Folded in here rather than layered as a second style: Reanimated writes
+    // opacity directly, so a static rule alongside it never took effect and
+    // disabled controls looked tappable.
+    opacity: opacity.value * (disabled ? 0.4 : 1),
   }));
 
   return (
@@ -103,7 +106,7 @@ export function Touchable({
         if (hapticStyle !== 'none') tap(hapticStyle);
         onPress?.(event);
       }}
-      style={[animated, { opacity: disabled ? 0.45 : 1 }, style as object]}
+      style={[animated, style as object]}
       {...props}
     >
       {children}

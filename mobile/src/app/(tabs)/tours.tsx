@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 
-import { BuildingMark, BuildingStack } from '@/components/building-mark';
+import { Cityscape } from '@/components/cityscape';
 import { ScreenBody, ScreenHeader } from '@/components/screen';
 import {
   Appear,
@@ -221,20 +221,14 @@ export default function ToursScreen() {
                             </Pill>
                           </View>
 
-                          {buildings.length ? (
-                            <View
-                              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                            >
-                              <BuildingStack buildings={buildings} />
-                              {when ? (
-                                <Caption style={{ color: when.urgent ? t.accentInk : t.textFaint }}>
-                                  {when.text}
-                                </Caption>
-                              ) : tour.tour_date ? (
-                                <Caption>{formatTourDate(tour.tour_date)}</Caption>
-                              ) : null}
-                            </View>
-                          ) : null}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+                            {tour.tour_date ? (
+                              <Caption style={{ color: when?.urgent ? t.accentInk : t.textFaint }}>
+                                {when?.text ?? formatTourDate(tour.tour_date)}
+                              </Caption>
+                            ) : null}
+                            {tour.market ? <Caption>{tour.market}</Caption> : null}
+                          </View>
 
                           <StatRow>
                             <Stat value={buildings.length} label="Stops" icon="business-outline" />
@@ -278,17 +272,24 @@ export default function ToursScreen() {
                       <Touchable
                         key={property.id}
                         onPress={() => router.push(`/properties/${property.id}`)}
-                        scaleTo={0.94}
-                        style={{ width: 96, gap: space.sm }}
+                        scaleTo={0.96}
+                        style={{
+                          width: 190,
+                          gap: 3,
+                          padding: space.lg,
+                          borderRadius: radius.lg,
+                          backgroundColor: t.surface,
+                          borderWidth: 1,
+                          borderColor: t.border,
+                        }}
                       >
-                        <BuildingMark
-                          name={property.name}
-                          address={property.address_line1}
-                          size={96}
-                        />
-                        <Caption numberOfLines={2} style={{ color: t.textMuted }}>
+                        <Text
+                          numberOfLines={1}
+                          style={{ fontSize: 15, fontWeight: '700', color: t.text }}
+                        >
                           {property.name ?? property.address_line1}
-                        </Caption>
+                        </Text>
+                        <Caption numberOfLines={1}>{property.address_line1}</Caption>
                       </Touchable>
                     ))}
                   </ScrollView>
@@ -335,104 +336,106 @@ function NextTourCard({ tour, onPress }: { tour: TourRow; onPress: () => void })
   const t = useTheme();
   const isDark = useIsDark();
   const client = clientOf(tour);
-  const buildings = buildingsOf(tour);
-  const notes = tour.stop_notes?.[0]?.count ?? 0;
+  const stops = (tour.tour_stops ?? []).length;
   const when = countdown(tour.tour_date);
   const touring = tour.status === 'in_progress';
 
   return (
     <Appear>
       <Touchable onPress={onPress} scaleTo={0.985} style={elevation(3, isDark)}>
-        <LinearGradient
-          colors={touring ? ['#B4681C', '#FAA61A'] : [t.primary, '#26468F']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ borderRadius: radius.xl, padding: space.xl, gap: space.lg, overflow: 'hidden' }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <View style={{ borderRadius: radius.xl, overflow: 'hidden', backgroundColor: t.primary }}>
+          <Cityscape market={tour.market} height={168} tint={touring ? 'dusk' : 'night'} />
+
+          {/* Above the scrim and clear of the skyline, so the scene reads as a
+              band across the top rather than a backdrop with a label on it. */}
+          <View
+            style={{
+              position: 'absolute',
+              top: space.lg,
+              left: space.xl,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: 'rgba(6,13,28,0.55)',
+              paddingHorizontal: space.md,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+            }}
+          >
+            <Ionicons name={touring ? 'radio' : 'calendar'} size={12} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>
+              {touring ? 'TOURING NOW' : when ? when.text.toUpperCase() : 'NEXT UP'}
+            </Text>
+          </View>
+
+          {/* The scene is at its busiest exactly where the title sits, so the
+              text gets its own scrim rather than relying on the art staying
+              dark in the right places. */}
+          <LinearGradient
+            colors={['transparent', 'rgba(6,13,28,0.55)', touring ? '#7A3B10' : '#0A2158']}
+            locations={[0, 0.42, 0.78]}
+            style={{ paddingTop: 108, paddingHorizontal: space.xl, paddingBottom: space.xl, gap: space.md }}
+          >
+            <View style={{ gap: 3 }}>
+              <Text
+                numberOfLines={2}
+                style={{ color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.6, lineHeight: 31 }}
+              >
+                {tour.title}
+              </Text>
+              {client ? (
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '600' }}>
+                  {client.company ?? client.name}
+                </Text>
+              ) : null}
+            </View>
+
             <View
               style={{
                 flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                backgroundColor: 'rgba(255,255,255,0.22)',
-                paddingHorizontal: space.md,
-                paddingVertical: 5,
-                borderRadius: radius.pill,
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                paddingTop: space.md,
+                borderTopWidth: 1,
+                borderTopColor: 'rgba(255,255,255,0.22)',
               }}
             >
-              <Ionicons name={touring ? 'radio' : 'calendar'} size={12} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>
-                {touring ? 'TOURING NOW' : when ? when.text.toUpperCase() : 'NEXT UP'}
-              </Text>
+              <View style={{ flex: 1, gap: space.sm }}>
+                <HeroFact icon="calendar-outline" text={formatTourDate(tour.tour_date) ?? 'No date yet'} />
+                {tour.market ? <HeroFact icon="location-outline" text={tour.market} /> : null}
+                <HeroFact
+                  icon="business-outline"
+                  text={`${stops} building${stops === 1 ? '' : 's'}`}
+                />
+              </View>
+
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: radius.pill,
+                  backgroundColor: '#fff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="arrow-forward" size={21} color={touring ? '#B4681C' : t.primary} />
+              </View>
             </View>
-          </View>
-
-          <View style={{ gap: 4 }}>
-            <Text
-              numberOfLines={2}
-              style={{ color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.6, lineHeight: 31 }}
-            >
-              {tour.title}
-            </Text>
-            {client ? (
-              <Text style={{ color: 'rgba(255,255,255,0.82)', fontSize: 15, fontWeight: '600' }}>
-                {client.company ?? client.name}
-              </Text>
-            ) : null}
-          </View>
-
-          {buildings.length ? <BuildingStack buildings={buildings} size={38} ring="rgba(255,255,255,0.28)" /> : null}
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingTop: space.md,
-              borderTopWidth: 1,
-              borderTopColor: 'rgba(255,255,255,0.2)',
-            }}
-          >
-            <View style={{ flexDirection: 'row', gap: space.xl }}>
-              <HeroStat value={buildings.length} label="stops" />
-              <HeroStat value={notes} label="notes" />
-              {tour.tour_date ? <HeroStat value={shortDate(tour.tour_date)} label="date" /> : null}
-            </View>
-
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: radius.pill,
-                backgroundColor: '#fff',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="arrow-forward" size={20} color={touring ? '#B4681C' : t.primary} />
-            </View>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
+        </View>
       </Touchable>
     </Appear>
   );
 }
 
-function HeroStat({ value, label }: { value: string | number; label: string }) {
+/** One line of the hero's summary: an icon and a fact, nothing to decode. */
+function HeroFact({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
-    <View>
-      <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800' }}>{value}</Text>
-      <Text
-        style={{
-          color: 'rgba(255,255,255,0.7)',
-          fontSize: 10.5,
-          fontWeight: '700',
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
-        }}
-      >
-        {label}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+      <Ionicons name={icon} size={14} color="rgba(255,255,255,0.7)" />
+      <Text style={{ color: '#fff', fontSize: 14.5, fontWeight: '600' }} numberOfLines={1}>
+        {text}
       </Text>
     </View>
   );
