@@ -87,9 +87,11 @@ export function ScreenHeader({
           overflow: 'hidden',
         }}
       >
-        {/* Shifted clear of the action button when there is one, so the
-            brand texture never sits underneath a control. */}
-        <DotMatrix inset={right ? 56 : 0} />
+        {/* Only on the top-level screens. Detail titles are as long as
+            whatever the broker typed, and a two-line title runs straight under
+            the texture. Shifting it was not enough; the fix is that brand
+            decoration belongs where the title is short and known. */}
+        {back ? null : <DotMatrix inset={right ? 56 : 0} />}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
           {back ? (

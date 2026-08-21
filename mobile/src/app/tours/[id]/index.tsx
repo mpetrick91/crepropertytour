@@ -1,21 +1,29 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 
+import { ScreenBody, ScreenHeader } from '@/components/screen';
 import {
+  Appear,
   Body,
+  BodyStrong,
   Button,
+  Caption,
   Card,
   Empty,
   ErrorText,
   Heading,
+  IconButton,
   InternalNote,
-  Muted,
   Label,
+  Muted,
+  Pill,
+  SectionHeader,
   StopNumber,
   Title,
+  Touchable,
 } from '@/components/ui';
 import { cityState, formatRate, formatSf, formatTourDate, humanError } from '@/lib/format';
 import { siteUrl, supabase } from '@/lib/supabase';
@@ -36,7 +44,6 @@ type StopRow = {
 export default function TourDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const t = useTheme();
 
   const [tour, setTour] = useState<Tour | null>(null);
@@ -199,167 +206,255 @@ export default function TourDetailScreen() {
     );
   }
 
+
   const onTour = new Set(stops.map((s) => s.property_id));
   const available = library.filter((p) => !onTour.has(p.id));
   const activeShares = shares.filter((s) => !s.revoked_at);
+  const subtitle = [formatTourDate(tour.tour_date), tour.market].filter(Boolean).join(' · ');
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        padding: space.lg,
-        paddingBottom: insets.bottom + space.xxl,
-        gap: space.lg,
-      }}
-    >
-      <View style={{ gap: space.xs }}>
-        <Title>{tour.title}</Title>
-        <Muted>
-          {[formatTourDate(tour.tour_date), tour.market].filter(Boolean).join(' · ')}
-        </Muted>
-      </View>
-
-      <Button
-        title="Recap — client feedback"
-        variant="secondary"
-        onPress={() => router.push(`/tours/${tour.id}/recap`)}
+    <>
+      <ScreenHeader
+        title={tour.title}
+        subtitle={subtitle || 'No date set'}
+        back
+        right={
+          <Touchable
+            onPress={() => router.push(`/tours/${tour.id}/recap`)}
+            accessibilityLabel="Client feedback recap"
+            haptic="medium"
+            scaleTo={0.88}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.pill,
+              backgroundColor: 'rgba(255,255,255,0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={21} color="#fff" />
+          </Touchable>
+        }
       />
 
-      <ErrorText>{error}</ErrorText>
+      <ScreenBody>
+        <ErrorText>{error}</ErrorText>
 
-      {tour.notes ? <InternalNote>{tour.notes}</InternalNote> : null}
+        {tour.requirement_summary ? (
+          <Appear>
+            <Card style={{ gap: space.xs }}>
+              <Label>What they need</Label>
+              <Body>{tour.requirement_summary}</Body>
+            </Card>
+          </Appear>
+        ) : null}
 
-      <Label>Itinerary</Label>
+        {tour.notes ? <InternalNote>{tour.notes}</InternalNote> : null}
 
-      {!stops.length ? (
-        <Empty icon="add-circle-outline" title="No stops yet">
-          Pick buildings from your library below to build the route.
-        </Empty>
-      ) : (
-        stops.map((stop, index) => {
-          const property = stop.properties;
-          const label = property?.name ?? property?.address_line1 ?? 'Property';
-          const facts = [
-            formatSf(property?.available_sf),
-            formatRate(property?.rent_rate, property?.rent_type),
-          ].filter(Boolean);
+        {/* ── Itinerary ────────────────────────────────────────────────── */}
 
-          return (
-            <Card key={stop.id} style={{ gap: space.md }}>
-              <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
-                <StopNumber n={index + 1} />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Heading>{label}</Heading>
-                  <Muted>
-                    {[property?.address_line1, cityState(property?.city, property?.state)]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Muted>
-                  {facts.length ? <Muted>{facts.join(' · ')}</Muted> : null}
-                </View>
+        <SectionHeader title={stops.length ? `Itinerary · ${stops.length} stops` : 'Itinerary'} />
+
+        {!stops.length ? (
+          <Empty icon="add-circle-outline" title="No stops yet">
+            Pick buildings from your library below to build the route.
+          </Empty>
+        ) : (
+          stops.map((stop, index) => {
+            const property = stop.properties;
+            const label = property?.name ?? property?.address_line1 ?? 'Property';
+            const sf = formatSf(property?.available_sf);
+            const rate = formatRate(property?.rent_rate, property?.rent_type);
+
+            return (
+              <Appear key={stop.id} index={index}>
+                <Card style={{ gap: space.md }}>
+                  <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
+                    <StopNumber n={index + 1} />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Heading numberOfLines={2}>{label}</Heading>
+                      <Muted numberOfLines={1}>
+                        {[property?.address_line1, cityState(property?.city, property?.state)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Muted>
+                    </View>
+                  </View>
+
+                  {sf || rate ? (
+                    <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
+                      {sf ? <Pill icon="resize-outline">{sf}</Pill> : null}
+                      {rate ? (
+                        <Pill icon="pricetag-outline" bg={t.accentSoft} fg={t.accentInk}>
+                          {rate}
+                        </Pill>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  {stop.broker_notes ? <InternalNote>{stop.broker_notes}</InternalNote> : null}
+
+                  {/* Reordering is the common action and removal is the rare
+                      one, so the arrows are plain controls and Remove is the
+                      only thing wearing a warning colour. */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.sm,
+                      paddingTop: space.sm,
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: t.border,
+                    }}
+                  >
+                    <IconButton
+                      icon="arrow-up"
+                      label={`Move ${label} earlier`}
+                      onPress={() => moveStop(stop.id, -1)}
+                      disabled={index === 0 || busy}
+                    />
+                    <IconButton
+                      icon="arrow-down"
+                      label={`Move ${label} later`}
+                      onPress={() => moveStop(stop.id, 1)}
+                      disabled={index === stops.length - 1 || busy}
+                    />
+                    <View style={{ flex: 1 }} />
+                    <IconButton
+                      icon="trash-outline"
+                      label={`Remove ${label}`}
+                      tone="danger"
+                      onPress={() => confirmRemoveStop(stop.id, label)}
+                      disabled={busy}
+                    />
+                  </View>
+                </Card>
+              </Appear>
+            );
+          })
+        )}
+
+        {/* ── Library ──────────────────────────────────────────────────── */}
+
+        <SectionHeader
+          title="Add a building"
+          action="New building"
+          onAction={() => router.push('/properties/new')}
+        />
+
+        {!available.length ? (
+          <Muted>Every building in your library is already on this tour.</Muted>
+        ) : (
+          available.slice(0, 8).map((property) => (
+            <Touchable
+              key={property.id}
+              onPress={() => addStop(property.id)}
+              disabled={busy}
+              haptic="medium"
+              scaleTo={0.98}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                padding: space.lg,
+                borderRadius: radius.lg,
+                backgroundColor: t.surface,
+                borderWidth: 1,
+                borderColor: t.border,
+              }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <BodyStrong numberOfLines={1}>
+                  {property.name ?? property.address_line1}
+                </BodyStrong>
+                <Caption numberOfLines={1}>
+                  {[property.address_line1, cityState(property.city, property.state)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Caption>
               </View>
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: radius.pill,
+                  backgroundColor: t.primarySoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="add" size={20} color={t.primary} />
+              </View>
+            </Touchable>
+          ))
+        )}
 
-              {stop.broker_notes ? <InternalNote>{stop.broker_notes}</InternalNote> : null}
+        {/* ── Client links ─────────────────────────────────────────────── */}
+
+        <SectionHeader title="Client link" />
+
+        {!activeShares.length ? (
+          <Card style={{ gap: space.md, alignItems: 'flex-start' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+              <Ionicons name="link" size={18} color={t.primary} />
+              <BodyStrong>No link yet</BodyStrong>
+            </View>
+            <Muted>
+              Your client taps the link, types their name, and they&apos;re on the tour. No
+              account, no app store, nothing to install.
+            </Muted>
+            <Button title="Create client link" icon="add" onPress={createShare} busy={busy} />
+          </Card>
+        ) : (
+          activeShares.map((share) => (
+            <Card key={share.id} style={{ gap: space.md }}>
+              <View
+                style={{
+                  backgroundColor: t.surfaceSunken,
+                  borderRadius: radius.md,
+                  padding: space.md,
+                }}
+              >
+                <Body style={{ fontSize: 13 }} selectable numberOfLines={2}>
+                  {shareUrl(share)}
+                </Body>
+              </View>
 
               <View style={{ flexDirection: 'row', gap: space.sm }}>
                 <Button
-                  title="↑"
-                  variant="secondary"
-                  onPress={() => moveStop(stop.id, -1)}
-                  disabled={index === 0 || busy}
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  title="↓"
-                  variant="secondary"
-                  onPress={() => moveStop(stop.id, 1)}
-                  disabled={index === stops.length - 1 || busy}
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  title="Remove"
-                  variant="danger"
-                  onPress={() => confirmRemoveStop(stop.id, label)}
-                  disabled={busy}
+                  title="Send"
+                  icon="paper-plane-outline"
+                  onPress={() => sendShare(share)}
                   style={{ flex: 2 }}
                 />
+                <Button
+                  title="Copy"
+                  icon="copy-outline"
+                  variant="secondary"
+                  onPress={() => copyShare(share)}
+                  style={{ flex: 1 }}
+                />
               </View>
+
+              <Pressable onPress={() => confirmRevoke(share)} hitSlop={10} accessibilityRole="button">
+                <Caption style={{ textAlign: 'center', textDecorationLine: 'underline' }}>
+                  Turn off this link
+                </Caption>
+              </Pressable>
             </Card>
-          );
-        })
-      )}
+          ))
+        )}
 
-      <Label>Add a building</Label>
-      {!available.length ? (
-        <Muted>
-          Every property in your library is already on this tour.{' '}
-          <Body
-            style={{ textDecorationLine: 'underline' }}
-            onPress={() => router.push('/properties/new')}
-          >
-            Add another
-          </Body>
-        </Muted>
-      ) : (
-        available.slice(0, 8).map((property) => (
-          <Pressable
-            key={property.id}
-            accessibilityRole="button"
-            onPress={() => addStop(property.id)}
-            disabled={busy}
-            style={({ pressed }) => ({ opacity: pressed || busy ? 0.6 : 1 })}
-          >
-            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-              <View style={{ flex: 1 }}>
-                <Body style={{ fontWeight: '600' }}>
-                  {property.name ?? property.address_line1}
-                </Body>
-                <Muted>{cityState(property.city, property.state)}</Muted>
-              </View>
-              <Body style={{ color: t.primary, fontWeight: '700', fontSize: 22 }}>+</Body>
-            </Card>
-          </Pressable>
-        ))
-      )}
-
-      <Label>Client links</Label>
-      <Muted>
-        Send one of these. Your client taps it, enters their name, and they&apos;re on the
-        tour — no account. Turning a link off stops new people joining; anyone already on
-        stays on.
-      </Muted>
-
-      {activeShares.map((share) => (
-        <Card key={share.id} style={{ gap: space.md }}>
-          <View
-            style={{ backgroundColor: t.surface, borderRadius: radius.sm, padding: space.md }}
-          >
-            <Body style={{ fontSize: 13 }} selectable numberOfLines={2}>
-              {shareUrl(share)}
-            </Body>
-          </View>
-          <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button title="Send" onPress={() => sendShare(share)} style={{ flex: 2 }} />
-            <Button
-              title="Copy"
-              variant="secondary"
-              onPress={() => copyShare(share)}
-              style={{ flex: 1 }}
-            />
-          </View>
-          <Pressable onPress={() => confirmRevoke(share)} hitSlop={10} accessibilityRole="button">
-            <Muted style={{ textDecorationLine: 'underline', textAlign: 'center' }}>
-              Turn off this link
-            </Muted>
-          </Pressable>
-        </Card>
-      ))}
-
-      <Button
-        title={activeShares.length ? 'Create another link' : 'Create client link'}
-        variant="secondary"
-        onPress={createShare}
-        busy={busy}
-      />
-    </ScrollView>
+        {activeShares.length ? (
+          <Button
+            title="Create another link"
+            variant="ghost"
+            onPress={createShare}
+            busy={busy}
+          />
+        ) : null}
+      </ScreenBody>
+    </>
   );
 }
