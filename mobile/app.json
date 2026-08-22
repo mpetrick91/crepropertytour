@@ -17,7 +17,8 @@
       ],
       "infoPlist": {
         "NSCameraUsageDescription": "Take photos of a building while you walk it, so they end up on the right stop of the tour.",
-        "NSPhotoLibraryUsageDescription": "Attach photos from your library to a stop on the tour."
+        "NSPhotoLibraryUsageDescription": "Attach photos from your library to a stop on the tour.",
+        "NSLocationWhenInUseUsageDescription": "Follow the tour automatically, switching to each building as you arrive. Your location is used only while the tour is open and is never stored or shared."
       }
     },
     "android": {
@@ -60,6 +61,12 @@
           "backgroundColor": "#0A2158",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Follow the tour automatically, switching to each building as you arrive."
         }
       ]
     ],
