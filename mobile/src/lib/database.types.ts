@@ -76,6 +76,8 @@ type PropertyRow = {
   listing_broker_company: string | null;
   listing_broker_email: string | null;
   listing_broker_phone: string | null;
+  /** Object key in the private `property-photos` bucket. */
+  photo_path: string | null;
   brochure_url: string | null;
   listing_url: string | null;
   /** Client-facing blurb. Safe to show a guest. */

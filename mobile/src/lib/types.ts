@@ -59,3 +59,15 @@ export function tourPhotoPath(tourId: string, stopId: string, filename: string):
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-96);
   return `${tourId}/${stopId}/${Crypto.randomUUID()}-${safeName}`;
 }
+
+export const PROPERTY_PHOTOS_BUCKET = 'property-photos';
+
+/**
+ * Object key for a building's cover photo. The leading broker id is what the
+ * storage policy checks -- it is the whole of the access rule -- so uploads
+ * must go through here rather than composing a path by hand.
+ */
+export function propertyPhotoPath(brokerId: string, propertyId: string, filename: string): string {
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-96);
+  return `${brokerId}/${propertyId}/${Crypto.randomUUID()}-${safeName}`;
+}

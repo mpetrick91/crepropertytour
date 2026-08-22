@@ -22,6 +22,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     siteUrl: process.env.EXPO_PUBLIC_SITE_URL ?? 'https://crepropertytour.vercel.app',
+    // Optional: a Google Maps key turns the aerial card into a live satellite
+    // image. Without it the card opens the phone's maps app instead.
+    mapsKey: process.env.EXPO_PUBLIC_MAPS_KEY,
     // Set to 'off' to run against the real Supabase project and its sign-in.
     // Anything else (including unset) means demo mode in development.
     demoMode: process.env.EXPO_PUBLIC_DEMO_MODE,
