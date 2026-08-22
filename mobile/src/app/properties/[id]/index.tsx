@@ -154,10 +154,7 @@ export default function PropertyScreen() {
     .filter(Boolean)
     .join(', ');
 
-  const documents = [
-    property.brochure_url ? { label: 'Brochure', icon: 'document-text' as const, url: property.brochure_url } : null,
-    property.listing_url ? { label: 'Listing', icon: 'globe-outline' as const, url: property.listing_url } : null,
-  ].filter((entry): entry is { label: string; icon: 'document-text' | 'globe-outline'; url: string } => entry !== null);
+  const brochure = property.brochure_url;
 
   const specs = [
     { label: 'Type', value: TYPE_LABEL[property.property_type ?? 'other'] },
@@ -236,58 +233,53 @@ export default function PropertyScreen() {
           </View>
         </Appear>
 
-        {/* ── Files ───────────────────────────────────────────────────── */}
+        {/* ── Brochure ────────────────────────────────────────────────── */}
 
-        <SectionHeader title="Files" />
+        <SectionHeader title="Brochure" />
 
-        {documents.length ? (
+        {brochure ? (
           <Appear index={3}>
-            <View style={{ gap: space.sm }}>
-              {documents.map((document) => (
-                <Touchable
-                  key={document.label}
-                  onPress={() => Linking.openURL(document.url).catch(() => {})}
-                  haptic="medium"
-                  scaleTo={0.98}
-                  style={[
-                    {
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: space.md,
-                      padding: space.lg,
-                      borderRadius: radius.lg,
-                      backgroundColor: t.surface,
-                    },
-                    elevation(1, isDark),
-                  ]}
-                >
-                  <View
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: radius.sm,
-                      backgroundColor: t.primarySoft,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name={document.icon} size={19} color={t.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <BodyStrong>{document.label}</BodyStrong>
-                    <Caption numberOfLines={1}>{document.url.replace(/^https?:\/\//, '')}</Caption>
-                  </View>
-                  <Ionicons name="open-outline" size={18} color={t.textFaint} />
-                </Touchable>
-              ))}
-            </View>
+            <Touchable
+              onPress={() => Linking.openURL(brochure).catch(() => {})}
+              haptic="medium"
+              scaleTo={0.98}
+              style={[
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  padding: space.lg,
+                  borderRadius: radius.lg,
+                  backgroundColor: t.surface,
+                },
+                elevation(1, isDark),
+              ]}
+            >
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: radius.sm,
+                  backgroundColor: t.primarySoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="document-text" size={19} color={t.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <BodyStrong>Brochure</BodyStrong>
+                <Caption numberOfLines={1}>{brochure.replace(/^https?:\/\//, '')}</Caption>
+              </View>
+              <Ionicons name="open-outline" size={18} color={t.textFaint} />
+            </Touchable>
           </Appear>
         ) : (
           <Appear index={3}>
             <Card style={{ gap: space.md, alignItems: 'flex-start' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
                 <Ionicons name="attach-outline" size={18} color={t.textMuted} />
-                <BodyStrong>No files yet</BodyStrong>
+                <BodyStrong>No brochure yet</BodyStrong>
               </View>
               <Muted>
                 Paste the brochure or floor-plan link on the edit screen and it opens from here in
