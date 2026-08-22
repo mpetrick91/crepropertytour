@@ -90,8 +90,14 @@ export function initialTables(): Tables {
         rent_type: 'nnn',
         op_ex: 1.85,
         lease_term: '5–7 years',
+        latitude: 42.8814,
+        longitude: -85.5228,
         listing_broker_name: 'Dana Whitfield',
         listing_broker_company: 'Colliers',
+        listing_broker_email: 'd.whitfield@colliers.example',
+        listing_broker_phone: '(616) 555-0188',
+        brochure_url: 'https://example.com/gateway-commerce-building-c.pdf',
+        listing_url: 'https://example.com/listings/gateway-commerce-c',
         description:
           'Cross-dock configuration with 32′ clear and heavy power. Suite is fully ' +
           'sprinklered and the office is built out and in good condition.',
@@ -124,8 +130,13 @@ export function initialTables(): Tables {
         rent_type: 'nnn',
         op_ex: 2.1,
         lease_term: '3–5 years',
+        latitude: 42.9494,
+        longitude: -85.6459,
         listing_broker_name: 'Marcus Reyes',
         listing_broker_company: 'JLL',
+        listing_broker_email: 'm.reyes@jll.example',
+        listing_broker_phone: '(616) 555-0113',
+        brochure_url: 'https://example.com/riverbend-logistics-park.pdf',
         description:
           'Closest option to the client’s existing workforce. Lower clear height, but ' +
           'the office build-out is the strongest of the three.',
@@ -155,8 +166,11 @@ export function initialTables(): Tables {
         rent_rate: 11.75,
         rent_type: 'gross',
         lease_term: '3 years',
+        latitude: 43.0342,
+        longitude: -85.5931,
         listing_broker_name: 'Priya Raghavan',
         listing_broker_company: 'Cushman & Wakefield',
+        listing_broker_phone: '(616) 555-0175',
         description:
           'Highest office ratio and the most presentable front entrance. Undersized on ' +
           'warehouse if volumes grow.',

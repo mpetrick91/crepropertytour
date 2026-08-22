@@ -58,7 +58,8 @@ export default function RootLayout() {
           <Stack.Screen name="tours/[id]/index" />
           <Stack.Screen name="tours/[id]/recap" />
           <Stack.Screen name="properties/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="properties/[id]" />
+          <Stack.Screen name="properties/[id]/index" />
+          <Stack.Screen name="properties/[id]/edit" />
         </Stack>
       </SessionProvider>
     </SafeAreaProvider>
