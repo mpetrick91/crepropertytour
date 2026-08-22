@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { PropertyForm, type PropertyDraft } from '@/components/property-form';
 import { humanError } from '@/lib/format';
+import { withCoordinates } from '@/lib/geo';
 import { supabase } from '@/lib/supabase';
 
 export default function NewPropertyScreen() {
@@ -23,7 +24,7 @@ export default function NewPropertyScreen() {
 
     const { error: insertError } = await supabase
       .from('properties')
-      .insert({ ...draft, broker_id: userData.user.id });
+      .insert({ ...(await withCoordinates(draft)), broker_id: userData.user.id });
 
     if (insertError) {
       setError(humanError(insertError.message));

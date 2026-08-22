@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ScreenBody, ScreenHeader } from '@/components/screen';
+import { StopTimeSheet } from '@/components/time-picker';
 import {
   Appear,
   Body,
@@ -20,12 +21,16 @@ import {
   Label,
   Muted,
   Pill,
+  haptic,
   SectionHeader,
   StopNumber,
   Title,
   Touchable,
 } from '@/components/ui';
+import { formatDistance } from '@/lib/distance';
 import { cityState, formatRate, formatSf, formatTourDate, humanError } from '@/lib/format';
+import { buildSchedule, formatWindow } from '@/lib/schedule';
+import { useLiveTour } from '@/lib/use-live-tour';
 import { siteUrl, supabase } from '@/lib/supabase';
 import { radius, space, useTheme } from '@/lib/theme';
 import type { Property, Tour, TourShare } from '@/lib/types';
@@ -34,10 +39,21 @@ type StopRow = {
   id: string;
   position: number;
   broker_notes: string | null;
+  scheduled_at: string | null;
+  duration_minutes: number | null;
   property_id: string;
   properties: Pick<
     Property,
-    'id' | 'name' | 'address_line1' | 'city' | 'state' | 'available_sf' | 'rent_rate' | 'rent_type'
+    | 'id'
+    | 'name'
+    | 'address_line1'
+    | 'city'
+    | 'state'
+    | 'latitude'
+    | 'longitude'
+    | 'available_sf'
+    | 'rent_rate'
+    | 'rent_type'
   > | null;
 };
 
@@ -53,6 +69,8 @@ export default function TourDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [editingStop, setEditingStop] = useState<StopRow | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -63,7 +81,8 @@ export default function TourDetailScreen() {
         supabase
           .from('tour_stops')
           .select(
-            'id, position, broker_notes, property_id, properties(id, name, address_line1, city, state, available_sf, rent_rate, rent_type)',
+            'id, position, broker_notes, scheduled_at, duration_minutes, property_id, ' +
+              'properties(id, name, address_line1, city, state, latitude, longitude, available_sf, rent_rate, rent_type)',
           )
           .eq('tour_id', id)
           .order('position'),
@@ -154,6 +173,35 @@ export default function TourDetailScreen() {
     );
   }
 
+  /**
+   * A fixed arrival time is stored on the stop; every later stop then counts
+   * from it rather than from the tour's start.
+   */
+  async function saveStopTime(
+    stop: StopRow,
+    time: { hours: number; minutes: number },
+    duration: number,
+  ) {
+    const day = tour?.tour_date ?? new Date().toISOString().slice(0, 10);
+    const when = new Date(`${day}T00:00:00`);
+    when.setHours(time.hours, time.minutes, 0, 0);
+
+    setEditingStop(null);
+    await run(async () =>
+      supabase
+        .from('tour_stops')
+        .update({ scheduled_at: when.toISOString(), duration_minutes: duration })
+        .eq('id', stop.id),
+    );
+  }
+
+  async function clearStopTime(stop: StopRow) {
+    setEditingStop(null);
+    await run(async () =>
+      supabase.from('tour_stops').update({ scheduled_at: null }).eq('id', stop.id),
+    );
+  }
+
   const shareUrl = (share: TourShare) => `${siteUrl()}/t/${share.token}`;
 
   async function sendShare(share: TourShare) {
@@ -189,6 +237,27 @@ export default function TourDetailScreen() {
       ],
     );
   }
+
+  // Every hook has to run on every render, so these sit above the early
+  // returns for loading and not-found rather than beside the markup that uses
+  // them. Both cope with `tour` being null while it loads.
+  const schedule = buildSchedule(stops, tour?.tour_date ?? null, tour?.start_time ?? null);
+
+  // Only buildings with coordinates can take part; the rest stay in the list
+  // and are simply never matched against.
+  const locatable = useMemo(
+    () =>
+      stops
+        .filter((stop) => stop.properties?.latitude != null && stop.properties?.longitude != null)
+        .map((stop) => ({
+          id: stop.id,
+          latitude: stop.properties!.latitude as number,
+          longitude: stop.properties!.longitude as number,
+        })),
+    [stops],
+  );
+
+  const live = useLiveTour(locatable, following);
 
   if (loading) {
     return (
@@ -254,6 +323,20 @@ export default function TourDetailScreen() {
 
         {/* ── Itinerary ────────────────────────────────────────────────── */}
 
+        {stops.length ? (
+          <FollowBar
+            following={following}
+            onToggle={setFollowing}
+            live={live}
+            locatable={locatable.length}
+            total={stops.length}
+            stopLabel={(stopId: string) => {
+              const stop = stops.find((entry) => entry.id === stopId);
+              return stop?.properties?.name ?? stop?.properties?.address_line1 ?? 'a stop';
+            }}
+          />
+        ) : null}
+
         <SectionHeader title={stops.length ? `Itinerary · ${stops.length} stops` : 'Itinerary'} />
 
         {!stops.length ? (
@@ -266,10 +349,28 @@ export default function TourDetailScreen() {
             const label = property?.name ?? property?.address_line1 ?? 'Property';
             const sf = formatSf(property?.available_sf);
             const rate = formatRate(property?.rent_rate, property?.rent_type);
+            const slot = schedule.get(stop.id);
+            const here = live.currentStopId === stop.id;
 
             return (
               <Appear key={stop.id} index={index}>
-                <Card style={{ gap: space.md }}>
+                <Card
+                  style={{
+                    gap: space.md,
+                    // The stop you are standing at is the one worth finding
+                    // without reading, so it gets an edge rather than a label.
+                    borderWidth: here ? 2 : undefined,
+                    borderColor: here ? t.accent : undefined,
+                  }}
+                >
+                  <StopTimeBar
+                    arrival={slot?.arrival ?? null}
+                    minutes={slot?.minutes ?? 0}
+                    pinned={slot?.pinned ?? false}
+                    here={here}
+                    onPress={() => setEditingStop(stop)}
+                  />
+
                   <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
                     <StopNumber n={index + 1} />
                     <View style={{ flex: 1, gap: 2 }}>
@@ -455,6 +556,180 @@ export default function TourDetailScreen() {
           />
         ) : null}
       </ScreenBody>
+
+      {editingStop ? (
+        <StopTimeSheet
+          open
+          label={
+            editingStop.properties?.name ?? editingStop.properties?.address_line1 ?? 'This stop'
+          }
+          arrival={schedule.get(editingStop.id)?.arrival ?? null}
+          minutes={schedule.get(editingStop.id)?.minutes ?? 45}
+          pinned={schedule.get(editingStop.id)?.pinned ?? false}
+          onClose={() => setEditingStop(null)}
+          onSave={(time, duration) => saveStopTime(editingStop, time, duration)}
+          onClear={() => clearStopTime(editingStop)}
+        />
+      ) : null}
     </>
+  );
+}
+
+/**
+ * The time a stop happens, along the top of its card.
+ *
+ * Given the whole width because on a tour this is the second thing anyone
+ * looks at, after which building it is. Tapping it sets a fixed time; a pinned
+ * stop says so, because the difference between "we plan to be here at 10:30"
+ * and "the landlord is expecting us at 10:30" matters when the day slips.
+ */
+function StopTimeBar({
+  arrival,
+  minutes,
+  pinned,
+  here,
+  onPress,
+}: {
+  arrival: Date | null;
+  minutes: number;
+  pinned: boolean;
+  here: boolean;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+
+  return (
+    <Touchable
+      onPress={onPress}
+      scaleTo={0.98}
+      accessibilityLabel={arrival ? `Change the time for this stop` : 'Set a time for this stop'}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.sm,
+        paddingBottom: space.sm,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: t.border,
+      }}
+    >
+      <Ionicons
+        name={here ? 'navigate-circle' : pinned ? 'lock-closed' : 'time-outline'}
+        size={16}
+        color={here ? t.accentInk : t.textMuted}
+      />
+
+      <Text
+        style={{
+          flex: 1,
+          fontSize: 15,
+          fontWeight: '800',
+          letterSpacing: -0.2,
+          color: here ? t.accentInk : t.text,
+          fontVariant: ['tabular-nums'],
+        }}
+      >
+        {arrival ? formatWindow(arrival, minutes) : `${minutes} min · no time yet`}
+      </Text>
+
+      {here ? (
+        <Pill bg={t.accentSoft} fg={t.accentInk}>
+          You&apos;re here
+        </Pill>
+      ) : (
+        <Ionicons name="chevron-forward" size={15} color={t.textFaint} />
+      )}
+    </Touchable>
+  );
+}
+
+/**
+ * The switch that makes the tour follow the broker, and the running commentary
+ * on what it can see.
+ *
+ * States it plainly rather than pretending: it only works while this screen is
+ * open, and only for buildings that have coordinates. A broker who knows what
+ * a feature does not do will trust the part that works.
+ */
+function FollowBar({
+  following,
+  onToggle,
+  live,
+  locatable,
+  total,
+  stopLabel,
+}: {
+  following: boolean;
+  onToggle: (value: boolean) => void;
+  live: ReturnType<typeof useLiveTour>;
+  locatable: number;
+  total: number;
+  stopLabel: (stopId: string) => string;
+}) {
+  const t = useTheme();
+
+  const status = (() => {
+    if (!following) {
+      return locatable === 0
+        ? 'No building on this tour has a location yet.'
+        : locatable < total
+          ? `Follows ${locatable} of ${total} buildings — the rest have no location.`
+          : 'Switches to each building as you arrive.';
+    }
+    if (live.error) return live.error;
+    if (live.locating) return 'Finding you…';
+    if (live.currentStopId) return `At ${stopLabel(live.currentStopId)}.`;
+    if (live.nearestStopId && live.metres != null) {
+      return `${formatDistance(live.metres)} from ${stopLabel(live.nearestStopId)}.`;
+    }
+    return 'Watching for the next building.';
+  })();
+
+  const disabled = locatable === 0;
+
+  return (
+    <Appear>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.md,
+          padding: space.lg,
+          borderRadius: radius.lg,
+          backgroundColor: following ? t.accentSoft : t.surface,
+          borderWidth: 1,
+          borderColor: following ? t.accent : t.border,
+        }}
+      >
+        <Ionicons
+          name={following ? 'navigate-circle' : 'navigate-outline'}
+          size={22}
+          color={following ? t.accentInk : t.textMuted}
+        />
+
+        <View style={{ flex: 1, gap: 1 }}>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: '700',
+              color: following ? t.accentInk : t.text,
+            }}
+          >
+            Follow me
+          </Text>
+          <Caption style={{ color: following ? t.accentInk : t.textFaint }}>{status}</Caption>
+        </View>
+
+        <Switch
+          value={following}
+          onValueChange={(next) => {
+            haptic('medium');
+            onToggle(next);
+          }}
+          disabled={disabled}
+          trackColor={{ true: t.accent, false: t.borderStrong }}
+          thumbColor="#fff"
+        />
+      </View>
+    </Appear>
   );
 }

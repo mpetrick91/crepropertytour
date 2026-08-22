@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, View } from 'react-native';
 import { PropertyForm, type PropertyDraft } from '@/components/property-form';
 import { Button, Muted, Title } from '@/components/ui';
 import { humanError } from '@/lib/format';
+import { withCoordinates } from '@/lib/geo';
 import { supabase } from '@/lib/supabase';
 import { space, useTheme } from '@/lib/theme';
 import type { Property } from '@/lib/types';
@@ -39,7 +40,10 @@ export default function EditPropertyScreen() {
 
     // No broker filter needed -- row-level security already scopes this to
     // properties this account owns.
-    const { error: updateError } = await supabase.from('properties').update(draft).eq('id', id);
+    const { error: updateError } = await supabase
+      .from('properties')
+      .update(await withCoordinates(draft))
+      .eq('id', id);
 
     if (updateError) {
       setError(humanError(updateError.message));
