@@ -5,12 +5,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { StatusBar } from 'expo-status-bar';
 
 import { AerialCard } from '@/components/aerial';
-import { ScreenBody, ScreenHeader } from '@/components/screen';
 import {
-  Appear,
   Body,
   BodyStrong,
   Button,
@@ -42,7 +43,11 @@ export default function PropertyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const t = useTheme();
-  const isDark = useIsDark();
+  const insets = useSafeAreaInsets();
+
+  // A little under half the screen: enough to read a site plan, not so much
+  // that the numbers below it need a scroll to reach.
+  const heroHeight = Math.max(280, Math.round(Dimensions.get('window').height * 0.42));
 
   const [property, setProperty] = useState<Property | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -173,56 +178,83 @@ export default function PropertyScreen() {
   const rate = formatRate(property.rent_rate, property.rent_type);
 
   return (
-    <>
-      <ScreenHeader
-        title={property.name ?? property.address_line1}
-        subtitle={cityState(property.city, property.state) || null}
-        back
-        right={
-          <Touchable
-            onPress={() => router.push(`/properties/${property.id}/edit`)}
-            accessibilityLabel="Edit building"
-            haptic="medium"
-            scaleTo={0.88}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: radius.pill,
-              backgroundColor: 'rgba(255,255,255,0.18)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="create-outline" size={21} color="#fff" />
-          </Touchable>
-        }
-      />
+    <View style={{ flex: 1, backgroundColor: t.canvas }}>
+      <StatusBar style="light" />
 
-      <ScreenBody>
-        <ErrorText>{error}</ErrorText>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + space.xxxl }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── The site, given the top of the screen ────────────────────── */}
 
-        {/* ── The building, and the ground it sits on ──────────────────── */}
-
-        <Appear>
-          <PhotoPanel
-            uri={photoUrl}
-            uploading={uploading}
-            onPick={attachPhoto}
-            hasPhoto={Boolean(property.photo_path)}
-          />
-        </Appear>
-
-        <Appear index={1}>
+        <View style={{ height: heroHeight }}>
           <AerialCard
+            bleed
+            height={heroHeight}
             address={address || property.address_line1}
             latitude={property.latitude}
             longitude={property.longitude}
           />
-        </Appear>
 
-        {/* ── The two numbers that matter, given the whole width ───────── */}
+          {/* Darkens just enough for white controls to sit on whatever the
+              imagery happens to be underneath them. */}
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(6,13,28,0.6)', 'transparent']}
+            style={{ position: 'absolute', left: 0, right: 0, top: 0, height: insets.top + 76 }}
+          />
 
-        <Appear index={2}>
+          <View
+            style={{
+              position: 'absolute',
+              top: insets.top + space.sm,
+              left: space.lg,
+              right: space.lg,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <OverlayButton icon="chevron-back" label="Go back" onPress={() => router.back()} />
+            <View style={{ flex: 1 }} />
+            <OverlayButton
+              icon="create-outline"
+              label="Edit building"
+              onPress={() => router.push(`/properties/${property.id}/edit`)}
+            />
+          </View>
+        </View>
+
+        <View style={{ padding: space.lg, gap: space.lg }}>
+          <View style={{ gap: 2 }}>
+            <Text
+              style={{ fontSize: 25, fontWeight: '800', letterSpacing: -0.5, color: t.text }}
+            >
+              {property.name ?? property.address_line1}
+            </Text>
+            <Muted>{address || property.address_line1}</Muted>
+          </View>
+
+          <ErrorText>{error}</ErrorText>
+
+          {/* ── The brochure, on its own ───────────────────────────────── */}
+
+          {brochure ? (
+            <Button
+              title="Open brochure"
+              icon="document-text"
+              onPress={() => Linking.openURL(brochure).catch(() => {})}
+            />
+          ) : (
+            <Button
+              title="Add a brochure link"
+              icon="add"
+              variant="secondary"
+              onPress={() => router.push(`/properties/${property.id}/edit`)}
+            />
+          )}
+
+          {/* ── Everything else, in reading order ──────────────────────── */}
+
           <View style={{ flexDirection: 'row', gap: space.md }}>
             <Headline
               label="Available"
@@ -231,76 +263,17 @@ export default function PropertyScreen() {
             />
             <Headline label="Asking" value={rate ?? '—'} icon="pricetag-outline" accent />
           </View>
-        </Appear>
 
-        {/* ── Brochure ────────────────────────────────────────────────── */}
+          <PhotoPanel
+            uri={photoUrl}
+            uploading={uploading}
+            onPick={attachPhoto}
+            hasPhoto={Boolean(property.photo_path)}
+          />
 
-        <SectionHeader title="Brochure" />
-
-        {brochure ? (
-          <Appear index={3}>
-            <Touchable
-              onPress={() => Linking.openURL(brochure).catch(() => {})}
-              haptic="medium"
-              scaleTo={0.98}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: space.md,
-                  padding: space.lg,
-                  borderRadius: radius.lg,
-                  backgroundColor: t.surface,
-                },
-                elevation(1, isDark),
-              ]}
-            >
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: radius.sm,
-                  backgroundColor: t.primarySoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="document-text" size={19} color={t.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <BodyStrong>Brochure</BodyStrong>
-                <Caption numberOfLines={1}>{brochure.replace(/^https?:\/\//, '')}</Caption>
-              </View>
-              <Ionicons name="open-outline" size={18} color={t.textFaint} />
-            </Touchable>
-          </Appear>
-        ) : (
-          <Appear index={3}>
-            <Card style={{ gap: space.md, alignItems: 'flex-start' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                <Ionicons name="attach-outline" size={18} color={t.textMuted} />
-                <BodyStrong>No brochure yet</BodyStrong>
-              </View>
-              <Muted>
-                Paste the brochure or floor-plan link on the edit screen and it opens from here in
-                one tap.
-              </Muted>
-              <Button
-                title="Add a link"
-                variant="secondary"
-                icon="add"
-                onPress={() => router.push(`/properties/${property.id}/edit`)}
-              />
-            </Card>
-          </Appear>
-        )}
-
-        {/* ── Specs ───────────────────────────────────────────────────── */}
-
-        {specs.length ? (
-          <>
-            <SectionHeader title="Specs" />
-            <Appear index={4}>
+          {specs.length ? (
+            <>
+              <SectionHeader title="Specs" />
               <Card style={{ gap: 0 }}>
                 {specs.map((spec, index) => (
                   <View
@@ -319,23 +292,17 @@ export default function PropertyScreen() {
                   </View>
                 ))}
               </Card>
-            </Appear>
-          </>
-        ) : null}
+            </>
+          ) : null}
 
-        {/* ── Description, contacts, private notes ────────────────────── */}
-
-        {property.description ? (
-          <Appear index={5}>
+          {property.description ? (
             <Card style={{ gap: space.xs }}>
               <Label>About</Label>
               <Body>{property.description}</Body>
             </Card>
-          </Appear>
-        ) : null}
+          ) : null}
 
-        {property.listing_broker_name ? (
-          <Appear index={6}>
+          {property.listing_broker_name ? (
             <Card style={{ gap: space.md }}>
               <Label>Listing broker</Label>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
@@ -361,19 +328,45 @@ export default function PropertyScreen() {
                 ) : null}
               </View>
             </Card>
-          </Appear>
-        ) : null}
+          ) : null}
 
-        {property.notes ? <InternalNote>{property.notes}</InternalNote> : null}
+          {property.notes ? <InternalNote>{property.notes}</InternalNote> : null}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
 
-        <Button
-          title="Edit building"
-          variant="secondary"
-          icon="create-outline"
-          onPress={() => router.push(`/properties/${property.id}/edit`)}
-        />
-      </ScreenBody>
-    </>
+/**
+ * A control that has to stay legible over whatever the aerial happens to show
+ * underneath it -- hence a solid scrim behind the glyph rather than a tint.
+ */
+function OverlayButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Touchable
+      onPress={onPress}
+      accessibilityLabel={label}
+      haptic="medium"
+      scaleTo={0.9}
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: radius.pill,
+        backgroundColor: 'rgba(6,13,28,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name={icon} size={21} color="#fff" />
+    </Touchable>
   );
 }
 
@@ -401,7 +394,13 @@ function PhotoPanel({
   if (uri) {
     return (
       <View style={[{ borderRadius: radius.lg, overflow: 'hidden' }, elevation(2, isDark)]}>
-        <Image source={{ uri }} style={{ width: '100%', height: 220 }} contentFit="cover" transition={200} />
+        <Image
+          source={{ uri }}
+          style={{ width: '100%', height: 220 }}
+          contentFit="cover"
+          transition={200}
+          accessibilityLabel="Photo of this building"
+        />
         <Touchable
           onPress={() => onPick('library')}
           haptic="medium"

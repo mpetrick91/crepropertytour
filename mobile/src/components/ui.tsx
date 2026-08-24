@@ -95,11 +95,11 @@ export function Touchable({
       accessibilityRole="button"
       disabled={disabled}
       onPressIn={() => {
-        scale.value = withSpring(scaleTo, { damping: 18, stiffness: 320 });
+        scale.value = withSpring(scaleTo, { damping: 26, stiffness: 340, overshootClamping: true });
         opacity.value = withTiming(0.9, { duration: 90 });
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 260 });
+        scale.value = withSpring(1, { damping: 26, stiffness: 300, overshootClamping: true });
         opacity.value = withTiming(1, { duration: 140 });
       }}
       onPress={(event) => {
@@ -563,10 +563,10 @@ export function Appear({
   return (
     <Animated.View
       // Capped so the twentieth card is not still animating in a second later.
-      entering={FadeInDown.delay(Math.min(index, 8) * 55)
-        .duration(320)
-        .springify()
-        .damping(18)}
+      // Timing, not a spring: a spring overshoots its resting position, and a
+      // screenful of cards each overshooting a moment apart reads as the page
+      // shaking rather than as anything arriving.
+      entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(260)}
       style={style}
     >
       {children}
@@ -594,7 +594,7 @@ export function Segmented<T extends string>({
   const index = Math.max(0, options.findIndex((option) => option.value === value));
   const offset = useSharedValue(index);
 
-  offset.value = withSpring(index, { damping: 20, stiffness: 220 });
+  offset.value = withSpring(index, { damping: 24, stiffness: 260, overshootClamping: true });
 
   const thumb = useAnimatedStyle(() => ({
     left: `${(offset.value * 100) / options.length}%`,
