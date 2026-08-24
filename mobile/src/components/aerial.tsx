@@ -76,16 +76,19 @@ export function AerialCard({
   latitude,
   longitude,
   height = 190,
+  bleed,
 }: {
   address: string;
   latitude?: number | null;
   longitude?: number | null;
   height?: number;
+  /** Full width, square corners -- for use as the top of a screen. */
+  bleed?: boolean;
 }) {
   const t = useTheme();
 
   const query = latitude != null && longitude != null ? `${latitude},${longitude}` : address;
-  const inline = staticMapUrl(query, 720, height * 2);
+  const inline = staticMapUrl(query, 900, height * 2);
 
   function open() {
     haptic('medium');
@@ -96,11 +99,11 @@ export function AerialCard({
     <Touchable
       onPress={open}
       haptic="none"
-      scaleTo={0.985}
+      scaleTo={bleed ? 1 : 0.985}
       accessibilityLabel={`Open ${address} in satellite view`}
       style={{
         height,
-        borderRadius: radius.lg,
+        borderRadius: bleed ? 0 : radius.lg,
         overflow: 'hidden',
         backgroundColor: t.primary,
       }}
