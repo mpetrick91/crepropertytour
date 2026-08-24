@@ -10,8 +10,13 @@ import type { Database } from './database.types';
  * `/app` is the browser build of the mobile app and `/app-config.js` is the
  * config it loads first: both must stay reachable while signed out, because
  * the app does its own sign-in inside that page.
+ *
+ * `/api/aerial` serves satellite tiles to the phone app, which holds a Supabase
+ * session rather than a website cookie -- redirecting it to a sign-in page
+ * would return HTML where an image was asked for. It exposes no data of its
+ * own: it takes a coordinate and returns a picture of the ground.
  */
-const PUBLIC_PREFIXES = ['/login', '/auth', '/t/', '/app', '/app-config.js'];
+const PUBLIC_PREFIXES = ['/login', '/auth', '/t/', '/app', '/app-config.js', '/api/aerial'];
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === '/') return true;
