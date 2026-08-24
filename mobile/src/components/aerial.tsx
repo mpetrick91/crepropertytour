@@ -3,8 +3,10 @@ import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
+import { siteUrl } from '@/lib/supabase';
 import { radius, space, useTheme } from '@/lib/theme';
 
 import { haptic, Touchable } from './ui';
@@ -12,40 +14,60 @@ import { haptic, Touchable } from './ui';
 /**
  * Satellite imagery for a building.
  *
- * Every provider of aerial tiles -- Google, Mapbox, Apple -- requires an API
- * key and a billing account, so an embedded image cannot be shipped without
- * one. Rather than leave the feature out, this does the part that needs no
- * key: one tap opens the phone's own maps app at the address, in satellite
- * mode, where the imagery is already licensed and the broker can pan and
- * zoom with the gestures they already know.
+ * Aerial tiles come from a provider that charges for them, so the imagery only
+ * appears once a key is configured. The key is never in the app: the request
+ * goes to this product's own site, which holds the key as a server environment
+ * variable and forwards it. A key shipped inside an app is a key anyone who
+ * downloads the app can read and spend, and static map requests carry no
+ * bundle id or referrer for the provider to check against, so there is no way
+ * to restrict one that would actually hold.
  *
- * Set EXPO_PUBLIC_MAPS_KEY and the aerial renders inline instead, with the
- * same tap still opening the full map. The screen is built so that switching
- * one on is a configuration change, not a redesign.
+ * Until the site has a key, the card still does the part that needs none: one
+ * tap opens the phone's own maps app at the address, in satellite mode, where
+ * the imagery is already licensed and the gestures are familiar. That tap
+ * keeps working after the imagery arrives.
  */
 
-function mapsKey(): string | undefined {
-  return (Constants.expoConfig?.extra as Record<string, string | undefined>)?.mapsKey || undefined;
-}
-
-/** Whether an inline aerial can be shown at all. */
-export function hasInlineAerial(): boolean {
-  return Boolean(mapsKey());
-}
-
-function staticMapUrl(query: string, width: number, height: number): string | null {
-  const key = mapsKey();
-  if (!key) return null;
+/**
+ * The site is asked for the picture. `null` when the building has no
+ * coordinates, since the endpoint deliberately accepts only a coordinate pair
+ * -- a public endpoint that forwarded free text could be pointed at billable
+ * requests other than map tiles.
+ */
+function aerialUrl(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+  width: number,
+  height: number,
+): string | null {
+  if (latitude == null || longitude == null) return null;
 
   const params = new URLSearchParams({
-    center: query,
+    lat: `${latitude}`,
+    lng: `${longitude}`,
+    w: `${Math.min(Math.round(width), 640)}`,
+    h: `${Math.min(Math.round(height), 640)}`,
+  });
+  return `${siteUrl()}/api/aerial?${params.toString()}`;
+}
+
+/**
+ * A local key still works, for trying it out before the site is configured.
+ * Not the path a shipped app takes.
+ */
+function devDirectUrl(point: string, width: number, height: number): string | null {
+  const key = (Constants.expoConfig?.extra as Record<string, string | undefined>)?.mapsKey;
+  if (!key || !__DEV__) return null;
+
+  const params = new URLSearchParams({
+    center: point,
     zoom: '18',
     size: `${Math.round(width)}x${Math.round(height)}`,
     scale: '2',
     maptype: 'satellite',
     key,
   });
-  params.append('markers', `color:0xFAA61A|${query}`);
+  params.append('markers', `color:0xFAA61A|${point}`);
   return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
 }
 
@@ -86,9 +108,14 @@ export function AerialCard({
   bleed?: boolean;
 }) {
   const t = useTheme();
+  // Set when the image fails, so a site with no key configured falls back to
+  // the drawing rather than to a broken frame.
+  const [imageFailed, setImageFailed] = useState(false);
 
-  const query = latitude != null && longitude != null ? `${latitude},${longitude}` : address;
-  const inline = staticMapUrl(query, 900, height * 2);
+  const point = latitude != null && longitude != null ? `${latitude},${longitude}` : null;
+  const source =
+    (point ? devDirectUrl(point, 640, 400) : null) ?? aerialUrl(latitude, longitude, 640, 400);
+  const inline = source && !imageFailed ? source : null;
 
   function open() {
     haptic('medium');
@@ -109,7 +136,14 @@ export function AerialCard({
       }}
     >
       {inline ? (
-        <Image source={{ uri: inline }} style={{ flex: 1 }} contentFit="cover" transition={200} />
+        <Image
+          source={{ uri: inline }}
+          style={{ flex: 1 }}
+          contentFit="cover"
+          transition={200}
+          onError={() => setImageFailed(true)}
+          accessibilityLabel={`Satellite view of ${address}`}
+        />
       ) : (
         <AerialPlaceholder />
       )}
