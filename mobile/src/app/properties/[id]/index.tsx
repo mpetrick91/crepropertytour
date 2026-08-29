@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
@@ -11,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { AerialCard } from '@/components/aerial';
+import { PhotoGallery, type GalleryPhoto } from '@/components/photo-gallery';
 import {
   Body,
   BodyStrong,
@@ -25,7 +25,7 @@ import {
   Touchable,
 } from '@/components/ui';
 import { cityState, formatRate, formatSf, humanError } from '@/lib/format';
-import { signedPropertyPhotoUrl } from '@/lib/photos';
+import { signedPropertyPhotoUrls } from '@/lib/photos';
 import { supabase } from '@/lib/supabase';
 import { elevation, radius, space, useIsDark, useTheme } from '@/lib/theme';
 import { PROPERTY_PHOTOS_BUCKET, propertyPhotoPath, type Property } from '@/lib/types';
@@ -50,16 +50,35 @@ export default function PropertyScreen() {
   const heroHeight = Math.max(280, Math.round(Dimensions.get('window').height * 0.42));
 
   const [property, setProperty] = useState<Property | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase.from('properties').select('*').eq('id', id).maybeSingle();
+
+    const [{ data }, { data: photoRows }] = await Promise.all([
+      supabase.from('properties').select('*').eq('id', id).maybeSingle(),
+      supabase
+        .from('property_photos')
+        .select('id, storage_path, caption, position')
+        .eq('property_id', id)
+        .order('position'),
+    ]);
+
     setProperty(data ?? null);
-    setPhotoUrl(data?.photo_path ? await signedPropertyPhotoUrl(data.photo_path) : null);
+
+    const rows = photoRows ?? [];
+    const urls = await signedPropertyPhotoUrls(rows.map((row) => row.storage_path));
+    setPhotos(
+      rows.map((row) => ({
+        id: row.id,
+        uri: urls.get(row.storage_path) ?? null,
+        caption: row.caption,
+      })),
+    );
+
     setLoading(false);
   }, [id]);
 
@@ -70,10 +89,13 @@ export default function PropertyScreen() {
   );
 
   /**
-   * Camera or library, then straight into the private bucket. The row stores
-   * the object key, never a URL -- reads go through a signed link that expires.
+   * Camera takes one; the library takes as many as are selected.
+   *
+   * Each photo is uploaded and its row written before the next begins, so a
+   * failure part-way leaves the ones already saved intact rather than rolling
+   * back work the broker watched succeed.
    */
-  async function attachPhoto(source: 'camera' | 'library') {
+  async function addPhotos(source: 'camera' | 'library') {
     if (!id || !property) return;
     setError(null);
 
@@ -86,7 +108,7 @@ export default function PropertyScreen() {
       setError(
         source === 'camera'
           ? 'Camera access is off for this app. Turn it on in Settings to take a photo.'
-          : 'Photo access is off for this app. Turn it on in Settings to choose a photo.',
+          : 'Photo access is off for this app. Turn it on in Settings to choose photos.',
       );
       return;
     }
@@ -97,46 +119,102 @@ export default function PropertyScreen() {
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             quality: 0.7,
+            allowsMultipleSelection: true,
+            selectionLimit: 12,
           });
 
-    const asset = picker.canceled ? null : picker.assets[0];
-    if (!asset) return;
+    const assets = picker.canceled ? [] : picker.assets;
+    if (!assets.length) return;
 
     setUploading(true);
+    let position = photos.length;
+
     try {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Not signed in.');
 
-      const response = await fetch(asset.uri);
-      const bytes = await response.arrayBuffer();
-      const path = propertyPhotoPath(user.user.id, id, asset.fileName ?? 'photo.jpg');
+      for (const asset of assets) {
+        const response = await fetch(asset.uri);
+        const bytes = await response.arrayBuffer();
+        const path = propertyPhotoPath(user.user.id, id, asset.fileName ?? 'photo.jpg');
 
-      const { error: uploadError } = await supabase.storage
-        .from(PROPERTY_PHOTOS_BUCKET)
-        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: false });
-      if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from(PROPERTY_PHOTOS_BUCKET)
+          .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: false });
+        if (uploadError) throw uploadError;
 
-      const { error: rowError } = await supabase
-        .from('properties')
-        .update({ photo_path: path })
-        .eq('id', id);
-      if (rowError) {
-        // Don't leave an orphan object behind if the row is refused.
-        await supabase.storage.from(PROPERTY_PHOTOS_BUCKET).remove([path]);
-        throw rowError;
-      }
+        const { error: rowError } = await supabase.from('property_photos').insert({
+          property_id: id,
+          storage_path: path,
+          position,
+          width: asset.width ?? null,
+          height: asset.height ?? null,
+          size_bytes: bytes.byteLength,
+        });
 
-      // The old photo is only unreachable once the row no longer points at it.
-      if (property.photo_path) {
-        await supabase.storage.from(PROPERTY_PHOTOS_BUCKET).remove([property.photo_path]);
+        if (rowError) {
+          // Don't leave an orphan object behind if the row is refused.
+          await supabase.storage.from(PROPERTY_PHOTOS_BUCKET).remove([path]);
+          throw rowError;
+        }
+
+        position += 1;
       }
 
       await load();
     } catch (caught) {
-      setError(caught instanceof Error ? humanError(caught.message) : 'Could not save that photo.');
+      setError(
+        caught instanceof Error ? humanError(caught.message) : 'Could not save those photos.',
+      );
+      // Whatever did land should still show.
+      await load();
     } finally {
       setUploading(false);
     }
+  }
+
+  /** The object goes only after the row that points at it is gone. */
+  async function removePhoto(photoId: string) {
+    const { data: row } = await supabase
+      .from('property_photos')
+      .select('storage_path')
+      .eq('id', photoId)
+      .maybeSingle();
+
+    const { error: deleteError } = await supabase
+      .from('property_photos')
+      .delete()
+      .eq('id', photoId);
+
+    if (deleteError) {
+      setError(humanError(deleteError.message));
+      return;
+    }
+
+    if (row?.storage_path) {
+      await supabase.storage.from(PROPERTY_PHOTOS_BUCKET).remove([row.storage_path]);
+    }
+    await load();
+  }
+
+  /**
+   * Promoting a photo renumbers the whole gallery, so the order stays a
+   * sequence rather than accumulating gaps and ties.
+   */
+  async function makeCover(photoId: string) {
+    const reordered = [photoId, ...photos.filter((photo) => photo.id !== photoId).map((p) => p.id)];
+
+    for (const [index, currentId] of reordered.entries()) {
+      const { error: updateError } = await supabase
+        .from('property_photos')
+        .update({ position: index })
+        .eq('id', currentId);
+      if (updateError) {
+        setError(humanError(updateError.message));
+        break;
+      }
+    }
+    await load();
   }
 
   if (loading) {
@@ -264,11 +342,12 @@ export default function PropertyScreen() {
             <Headline label="Asking" value={rate ?? '—'} icon="pricetag-outline" accent />
           </View>
 
-          <PhotoPanel
-            uri={photoUrl}
+          <PhotoGallery
+            photos={photos}
             uploading={uploading}
-            onPick={attachPhoto}
-            hasPhoto={Boolean(property.photo_path)}
+            onAdd={addPhotos}
+            onRemove={removePhoto}
+            onMakeCover={makeCover}
           />
 
           {specs.length ? (
@@ -367,110 +446,6 @@ function OverlayButton({
     >
       <Ionicons name={icon} size={21} color="#fff" />
     </Touchable>
-  );
-}
-
-/**
- * The building's own photograph, or an invitation to take one.
- *
- * A property page opens on an image because that is how a building is
- * recognised. With nothing uploaded the panel does not pretend otherwise -- it
- * asks, with the two ways of answering side by side.
- */
-function PhotoPanel({
-  uri,
-  uploading,
-  hasPhoto,
-  onPick,
-}: {
-  uri: string | null;
-  uploading: boolean;
-  hasPhoto: boolean;
-  onPick: (source: 'camera' | 'library') => void;
-}) {
-  const t = useTheme();
-  const isDark = useIsDark();
-
-  if (uri) {
-    return (
-      <View style={[{ borderRadius: radius.lg, overflow: 'hidden' }, elevation(2, isDark)]}>
-        <Image
-          source={{ uri }}
-          style={{ width: '100%', height: 220 }}
-          contentFit="cover"
-          transition={200}
-          accessibilityLabel="Photo of this building"
-        />
-        <Touchable
-          onPress={() => onPick('library')}
-          haptic="medium"
-          scaleTo={0.9}
-          accessibilityLabel="Replace photo"
-          style={{
-            position: 'absolute',
-            right: space.md,
-            bottom: space.md,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: 'rgba(6,13,28,0.68)',
-            paddingHorizontal: space.md,
-            paddingVertical: 8,
-            borderRadius: radius.pill,
-          }}
-        >
-          {uploading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="camera" size={14} color="#fff" />
-          )}
-          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
-            {uploading ? 'Saving…' : 'Replace'}
-          </Text>
-        </Touchable>
-      </View>
-    );
-  }
-
-  return (
-    <LinearGradient
-      colors={isDark ? ['#172236', '#0C1422'] : ['#E9EFF8', '#DCE5F2']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
-        height: 190,
-        borderRadius: radius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: space.md,
-        padding: space.lg,
-        overflow: 'hidden',
-      }}
-    >
-      {uploading ? (
-        <>
-          <ActivityIndicator color={t.primary} />
-          <Muted>Saving the photo…</Muted>
-        </>
-      ) : (
-        <>
-          <Ionicons name="image-outline" size={30} color={t.textFaint} />
-          <Muted style={{ textAlign: 'center' }}>
-            {hasPhoto ? 'That photo could not be loaded.' : 'No photo of this building yet.'}
-          </Muted>
-          <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button title="Take one" icon="camera" size="md" onPress={() => onPick('camera')} />
-            <Button
-              title="Choose"
-              icon="images-outline"
-              size="md"
-              variant="secondary"
-              onPress={() => onPick('library')}
-            />
-          </View>
-        </>
-      )}
-    </LinearGradient>
   );
 }
 

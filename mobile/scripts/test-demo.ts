@@ -94,6 +94,42 @@ const check = (label: string, ok: boolean, detail?: unknown) => {
   const after = await db.from('tour_stops').select('id, position').eq('tour_id', tourId).order('position');
   check('stops reordered', after.data[0].id === reversed[0], after.data.map((s: any) => s.position));
 
+  console.log('property photos');
+  const propertyId = (await db.from('properties').select('id')).data[0].id;
+  for (const [i, name] of ['dock.jpg', 'office.jpg', 'yard.jpg'].entries()) {
+    const path = `broker/${propertyId}/${name}`;
+    await db.storage.from('property-photos').upload(path, new Uint8Array([255, 216, 255, i]), {
+      contentType: 'image/jpeg',
+    });
+    await db.from('property_photos').insert({ property_id: propertyId, storage_path: path, position: i });
+  }
+  const gallery = await db.from('property_photos')
+    .select('id, storage_path, position').eq('property_id', propertyId).order('position');
+  check('three photos on one building', gallery.data.length === 3, gallery.data.length);
+  check('in position order', gallery.data.map((p: any) => p.position).join(',') === '0,1,2');
+
+  const signedGallery = await db.storage.from('property-photos')
+    .createSignedUrls(gallery.data.map((p: any) => p.storage_path), 3600);
+  check('every photo signs to a usable data URI',
+    signedGallery.data.every((e: any) => e.signedUrl.startsWith('data:image/jpeg;base64,')),
+    signedGallery.data[0]);
+
+  // Promote the third photo, as the viewer's "make cover" does.
+  const promoted = gallery.data[2].id;
+  const order = [promoted, ...gallery.data.filter((p: any) => p.id !== promoted).map((p: any) => p.id)];
+  for (const [index, pid] of order.entries()) {
+    await db.from('property_photos').update({ position: index }).eq('id', pid);
+  }
+  const reordered = await db.from('property_photos')
+    .select('id, position').eq('property_id', propertyId).order('position');
+  check('promoted photo becomes the cover', reordered.data[0].id === promoted, reordered.data);
+  check('positions stay a gapless sequence',
+    reordered.data.map((p: any) => p.position).join(',') === '0,1,2', reordered.data);
+
+  await db.from('property_photos').delete().eq('id', promoted);
+  const left = await db.from('property_photos').select('id').eq('property_id', propertyId);
+  check('deleting one leaves the rest', left.data.length === 2, left.data.length);
+
   console.log('storage');
   const up = await db.storage.from('x').upload('t/s/a.jpg', new Uint8Array(10));
   check('upload succeeds', up.error === null);

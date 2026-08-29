@@ -49,6 +49,30 @@ const DEMO_SESSION = {
   user: DEMO_USER,
 };
 
+/**
+ * Bytes to base64, without a Buffer or a polyfill.
+ *
+ * Demo mode has no object store to hand back a URL from, so an uploaded photo
+ * becomes a data URI and displays exactly as a signed link would. Hermes has
+ * no btoa, and pulling in a base64 package to make a demo work would be a
+ * dependency the real app never uses.
+ */
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function toBase64(input: Uint8Array): string {
+  let output = '';
+  for (let i = 0; i < input.length; i += 3) {
+    const a = input[i];
+    const b = input[i + 1];
+    const c = input[i + 2];
+    output += B64[a >> 2];
+    output += B64[((a & 3) << 4) | ((b ?? 0) >> 4)];
+    output += b === undefined ? '=' : B64[((b & 15) << 2) | ((c ?? 0) >> 6)];
+    output += c === undefined ? '=' : B64[c & 63];
+  }
+  return output;
+}
+
 export function createDemoClient() {
   const tables: Tables = initialTables();
   // Photo bytes, keyed by the storage path the app generates.
@@ -195,11 +219,18 @@ export function createDemoClient() {
 
   const storage = {
     from: () => ({
-      upload: async (path: string, bytes: ArrayBuffer | Uint8Array) => {
-        // Kept as an object URL rather than bytes: enough for the photo to
-        // appear on the stop it was taken at, without holding megabytes of
-        // base64 in memory for a demo.
-        objects.set(path, `demo-object:${path}:${(bytes as Uint8Array).byteLength ?? 0}`);
+      upload: async (
+        path: string,
+        bytes: ArrayBuffer | Uint8Array,
+        options?: { contentType?: string },
+      ) => {
+        const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+        const type = options?.contentType ?? 'image/jpeg';
+        // A data URI, so the photo displays exactly as one behind a signed
+        // link would. Held in memory only: demo photos do not survive a
+        // reload, which is the honest behaviour for a database that is not
+        // really there.
+        objects.set(path, `data:${type};base64,${toBase64(view)}`);
         return { data: { path }, error: null };
       },
       remove: async (paths: string[]) => {

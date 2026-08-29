@@ -25,13 +25,20 @@ export async function signedPhotoUrls(paths: string[]): Promise<Map<string, stri
 }
 
 /**
- * One signed link for a building's cover photo. Returns null rather than
- * throwing when the object is missing, so a broken path shows the empty panel
- * instead of taking the screen down.
+ * Signed links for a building's photos, in one request rather than one each.
+ * A path that cannot be signed is left out rather than throwing, so one
+ * missing object shows as a single blank tile instead of an empty gallery.
  */
-export async function signedPropertyPhotoUrl(path: string): Promise<string | null> {
+export async function signedPropertyPhotoUrls(paths: string[]): Promise<Map<string, string>> {
+  if (!paths.length) return new Map();
+
   const { data } = await supabase.storage
     .from(PROPERTY_PHOTOS_BUCKET)
-    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
-  return data?.signedUrl ?? null;
+    .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
+
+  const entries: [string, string][] = [];
+  for (const entry of data ?? []) {
+    if (entry.path && entry.signedUrl) entries.push([entry.path, entry.signedUrl]);
+  }
+  return new Map(entries);
 }

@@ -76,8 +76,6 @@ type PropertyRow = {
   listing_broker_company: string | null;
   listing_broker_email: string | null;
   listing_broker_phone: string | null;
-  /** Object key in the private `property-photos` bucket. */
-  photo_path: string | null;
   brochure_url: string | null;
   listing_url: string | null;
   /** Client-facing blurb. Safe to show a guest. */
@@ -171,6 +169,20 @@ type StopPhotoRow = {
   taken_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type PropertyPhotoRow = {
+  id: string;
+  property_id: string;
+  /** Object key in the `property-photos` bucket. Always `<broker_id>/...`. */
+  storage_path: string;
+  caption: string | null;
+  /** 0 is the cover. */
+  position: number;
+  width: number | null;
+  height: number | null;
+  size_bytes: number | null;
+  created_at: string;
 };
 
 type GuestTourRow = Pick<
@@ -289,6 +301,15 @@ export type Database = {
           Fk<'stop_notes_stop_id_fkey', 'stop_id', 'tour_stops'>,
           Fk<'stop_notes_participant_id_fkey', 'participant_id', 'tour_participants'>,
         ];
+      };
+      property_photos: {
+        Row: PropertyPhotoRow;
+        Insert: Insertable<
+          PropertyPhotoRow,
+          'caption' | 'position' | 'width' | 'height' | 'size_bytes'
+        >;
+        Update: Partial<PropertyPhotoRow>;
+        Relationships: [Fk<'property_photos_property_id_fkey', 'property_id', 'properties'>];
       };
       stop_photos: {
         Row: StopPhotoRow;
