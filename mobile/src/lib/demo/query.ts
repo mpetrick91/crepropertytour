@@ -26,6 +26,14 @@ const EMBEDS: Record<string, Record<string, Embed>> = {
   tour_stops: {
     properties: { table: 'properties', type: 'one', localKey: 'property_id', foreignKey: 'id' },
   },
+  properties: {
+    property_photos: {
+      table: 'property_photos',
+      type: 'many',
+      localKey: 'id',
+      foreignKey: 'property_id',
+    },
+  },
   stop_notes: {
     tour_participants: {
       table: 'tour_participants',

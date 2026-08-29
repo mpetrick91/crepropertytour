@@ -260,6 +260,7 @@ export function initialTables(): Tables {
     ],
 
     stop_photos: [],
+    property_photos: [],
     tour_shares: [],
   };
 }

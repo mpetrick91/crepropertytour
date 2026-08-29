@@ -29,6 +29,7 @@ export type TourShare = Tables['tour_shares']['Row'];
 export type TourParticipant = Tables['tour_participants']['Row'];
 export type StopNote = Tables['stop_notes']['Row'];
 export type StopPhoto = Tables['stop_photos']['Row'];
+export type PropertyPhoto = Tables['property_photos']['Row'];
 
 export type PropertyInsert = Tables['properties']['Insert'];
 export type TourInsert = Tables['tours']['Insert'];
