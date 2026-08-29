@@ -24,6 +24,7 @@ import {
   SectionHeader,
   Touchable,
 } from '@/components/ui';
+import { readFileBytes } from '@/lib/file-bytes';
 import { cityState, formatRate, formatSf, humanError } from '@/lib/format';
 import { signedPropertyPhotoUrls } from '@/lib/photos';
 import { supabase } from '@/lib/supabase';
@@ -134,8 +135,7 @@ export default function PropertyScreen() {
       if (!user.user) throw new Error('Not signed in.');
 
       for (const asset of assets) {
-        const response = await fetch(asset.uri);
-        const bytes = await response.arrayBuffer();
+        const bytes = await readFileBytes(asset.uri);
         const path = propertyPhotoPath(user.user.id, id, asset.fileName ?? 'photo.jpg');
 
         const { error: uploadError } = await supabase.storage
