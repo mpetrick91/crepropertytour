@@ -18,6 +18,7 @@ import {
   Touchable,
   haptic,
 } from '@/components/ui';
+import { readFileBytes } from '@/lib/file-bytes';
 import { cityState, formatRate, formatSf, humanError } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { radius, space, useTheme } from '@/lib/theme';
@@ -168,8 +169,7 @@ export function StopCard({
     setError(null);
 
     try {
-      const response = await fetch(asset.uri);
-      const bytes = await response.arrayBuffer();
+      const bytes = await readFileBytes(asset.uri);
 
       if (bytes.byteLength > MAX_UPLOAD_BYTES) {
         setError('That photo is larger than 15 MB.');
